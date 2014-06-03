@@ -763,6 +763,11 @@ volatile uint8_t    _bufLen;
 uint8_t             _buf[RFM69_MAX_MESSAGE_LEN];
 
 volatile uint8_t    _rxBufValid;
+
+float               _temperatureFudge;
+
+int16_t                 _lastRssi;
+
 /*
 class RFM69
 {

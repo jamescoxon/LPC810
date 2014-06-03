@@ -11,73 +11,205 @@
 #include "rfm69.h"
 #include "RFM69Config.h"
 #include "spi.h"
+#include <string.h>
+#include <stdio.h>
 
-uint8_t RFM69init()
-{
-    _mode = RFM69_MODE_RX; // We start up in RX mode
+void* memcpy(void* dest, const void* src, size_t count) {
+    char* dst8 = (char*)dest;
+    char* src8 = (char*)src;
     
+    while (count--) {
+        *dst8++ = *src8++;
+    }
+    return dest;
+}
+
+void RFM69(float tempFudge)
+{
+    _mode = RFM69_MODE_RX;
+    _temperatureFudge = tempFudge;
+}
+
+uint8_t RFM69_init()
+{
     mrtDelay(12);
     
-    /* Configure SPI */
+    //Configure SPI
     spiInit(LPC_SPI0,12,0);
     
-    //printf("SPI Configured\n\r");
-    
-    mrtDelay(1000);
+    mrtDelay(100);
     
     // Set up device
     uint8_t i;
-    for (i = 0; CONFIG[i][0] != 255; i++) {
+    for (i = 0; CONFIG[i][0] != 255; i++)
         spiWrite(CONFIG[i][0], CONFIG[i][1]);
-    }
     
-    setMode(_mode);
+    RFM69_setMode(_mode);
     
-    // We should check for a device here, maybe set and check mode?
-    
-    //_interrupt.rise(this, &RFM69::isr0);
-    //attachInterrupt(0, RFM69::handleInterrupt, RISING);
-    
-    //clearTxBuf();
-    //clearRxBuf();
-    
-    mrtDelay(3000);
-    
-    //printf("Radio configured\n\r");
+    // Clear TX/RX Buffer
+    _bufLen = 0;
     
     return 1;
 }
 
-void setMode(uint8_t newMode)
+void RFM69_spiFifoWrite(const uint8_t* src, uint8_t len)
+{
+    
+    //Construct FIFO
+    
+    //Add length
+    data_temp[0] = len;
+    
+    uint8_t i;
+    uint8_t n = len;
+    
+    for (i = 1; i < n; i++){
+        data_temp[i] = src[i - 1];
+    }
+    
+    //Send data
+    spiBurstWrite(RFM69_REG_00_FIFO | RFM69_SPI_WRITE_MASK, len);
+}
+
+void RFM69_setMode(uint8_t newMode)
 {
     spiWrite(RFM69_REG_01_OPMODE, (spiRead(RFM69_REG_01_OPMODE) & 0xE3) | newMode);
+    _mode = newMode;
 }
-void setModeSleep()
-{
-    setMode(RFM69_MODE_SLEEP);
-}
-void setModeRx()
-{
-    setMode(RFM69_MODE_RX);
-}
-void setModeTx()
-{
-    setMode(RFM69_MODE_TX);
-}
-uint8_t  mode()
+
+uint8_t  RFM69_mode()
 {
     return _mode;
 }
 
-uint8_t send(uint8_t len)
+uint8_t RFM69_checkRx()
 {
-    setModeTx(); // Start the transmitter, turns off the receiver
-    mrtDelay(10);
+    // Check IRQ register for payloadready flag (indicates RXed packet waiting in FIFO)
+    if(spiRead(RFM69_REG_28_IRQ_FLAGS2) & RF_IRQFLAGS2_PAYLOADREADY) {
+        // Get packet length from first byte of FIFO
+        _bufLen = spiRead(RFM69_REG_00_FIFO)+1;
+        // Read FIFO into our Buffer
+        spiBurstRead(RFM69_REG_00_FIFO, _buf, RFM69_FIFO_SIZE);
+        // Read RSSI register (should be of the packet? - TEST THIS)
+        _lastRssi = -(spiRead(RFM69_REG_24_RSSI_VALUE)/2);
+        // Clear the radio FIFO (found in HopeRF demo code)
+        clearFifo();
+        return 1;
+    }
+    
+    return 0;
+}
 
-    spiBurstWrite(RFM69_REG_00_FIFO | RFM69_SPI_WRITE_MASK, len);
-    
-    mrtDelay(1000);
-    
-    setModeRx(); // Start the transmitter, turns off the receiver
-    return 1;
+void RFM69_recv(uint8_t* buf, uint8_t* len)
+{
+    // Copy RX Buffer to byref Buffer
+    memcpy(buf, _buf, _bufLen);
+    *len = _bufLen;
+    // Clear RX Buffer
+    _bufLen = 0;
+}
+
+void RFM69_send(const uint8_t* data, uint8_t len, uint8_t power)
+{
+    // power is TX Power in dBmW (valid values are 2dBmW-20dBmW)
+    if(power<2 || power >20) {
+        // Could be dangerous, so let's check this
+        return;
+    }
+    uint8_t oldMode = _mode;
+    // Copy data into TX Buffer
+    memcpy(_buf, data, len);
+    // Update TX Buffer Size
+    _bufLen = len;
+    // Start Transmitter
+    RFM69_setMode(RFM69_MODE_TX);
+    // Set up PA
+    if(power<=17) {
+        // Set PA Level
+        uint8_t paLevel = power + 14;
+        spiWrite(RFM69_REG_11_PA_LEVEL, RF_PALEVEL_PA0_OFF | RF_PALEVEL_PA1_ON | RF_PALEVEL_PA2_ON | paLevel);
+    } else {
+        // Disable Over Current Protection
+        spiWrite(RFM69_REG_13_OCP, RF_OCP_OFF);
+        // Enable High Power Registers
+        spiWrite(RFM69_REG_5A_TEST_PA1, 0x5D);
+        spiWrite(RFM69_REG_5C_TEST_PA2, 0x7C);
+        // Set PA Level
+        uint8_t paLevel = power + 11;
+        spiWrite(RFM69_REG_11_PA_LEVEL, RF_PALEVEL_PA0_OFF | RF_PALEVEL_PA1_ON | RF_PALEVEL_PA2_ON | paLevel);
+    }
+    // Wait for PA ramp-up
+    while(!(spiRead(RFM69_REG_27_IRQ_FLAGS1) & RF_IRQFLAGS1_TXREADY)) { };
+    // Throw Buffer into FIFO, packet transmission will start automatically
+    RFM69_spiFifoWrite(_buf, _bufLen);
+    // Clear MCU TX Buffer
+    _bufLen = 0;
+    // Wait for packet to be sent
+    while(!(spiRead(RFM69_REG_28_IRQ_FLAGS2) & RF_IRQFLAGS2_PACKETSENT)) { };
+    // Return Transceiver to original mode
+    RFM69_setMode(oldMode);
+    // If we were in high power, switch off High Power Registers
+    if(power>17) {
+        // Disable High Power Registers
+        spiWrite(RFM69_REG_5A_TEST_PA1, 0x55);
+        spiWrite(RFM69_REG_5C_TEST_PA2, 0x70);
+        // Enable Over Current Protection
+        spiWrite(RFM69_REG_13_OCP, RF_OCP_ON | RF_OCP_TRIM_95);
+    }
+}
+
+void RFM69_SetLnaMode(uint8_t lnaMode) {
+    // RF_TESTLNA_NORMAL (default)
+    // RF_TESTLNA_SENSITIVE
+    spiWrite(RFM69_REG_58_TEST_LNA, lnaMode);
+}
+
+void RFM69_clearFifo() {
+    // Must only be called in RX Mode
+    // Apparently this works... found in HopeRF demo code
+    setMode(RFM69_MODE_STDBY);
+    setMode(RFM69_MODE_RX);
+}
+
+float RFM69_readTemp()
+{
+    // Store current transceiver mode
+    uint8_t oldMode = _mode;
+    // Set mode into Standby (required for temperature measurement)
+    RFM69_setMode(RFM69_MODE_STDBY);
+	
+    // Trigger Temperature Measurement
+    spiWrite(RFM69_REG_4E_TEMP1, RF_TEMP1_MEAS_START);
+    // Check Temperature Measurement has started
+    if(!(RF_TEMP1_MEAS_RUNNING && spiRead(RFM69_REG_4E_TEMP1))){
+        return 255.0;
+    }
+    // Wait for Measurement to complete
+    while(RF_TEMP1_MEAS_RUNNING && spiRead(RFM69_REG_4E_TEMP1)) { };
+    // Read raw ADC value
+    uint8_t rawTemp = spiRead(RFM69_REG_4F_TEMP2);
+	
+    // Set transceiver back to original mode
+    RFM69_setMode(oldMode);
+    // Return processed temperature value
+    //return (168.3+_temperatureFudge) - float(rawTemp);
+}
+
+int16_t RFM69_lastRssi() {
+    return _lastRssi;
+}
+
+int16_t RFM69_sampleRssi() {
+    // Must only be called in RX mode
+    if(_mode!=RFM69_MODE_RX) {
+        // Not sure what happens otherwise, so check this
+        return 0;
+    }
+    // Trigger RSSI Measurement
+    spiWrite(RFM69_REG_23_RSSI_CONFIG, RF_RSSI_START);
+    // Wait for Measurement to complete
+    while(!(RF_RSSI_DONE && spiRead(RFM69_REG_23_RSSI_CONFIG))) { };
+    // Read, store in _lastRssi and return RSSI Value
+    _lastRssi = -(spiRead(RFM69_REG_24_RSSI_VALUE)/2);
+    return _lastRssi;
 }

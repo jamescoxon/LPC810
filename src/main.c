@@ -90,7 +90,7 @@ int main(void)
     /* Send some text (printf is redirected to UART0) */
     printf("Hello, LPC810!\n\r");
     
-    RFM69init();
+    RFM69_init();
 
     //setMode(RFM69_MODE_TX);
     
@@ -117,11 +117,11 @@ int main(void)
         printf("Mode: 0x%02x ", data);
         
         if(count == 1){
-            setMode(RFM69_MODE_TX);
+            RFM69_setMode(RFM69_MODE_TX);
             count = 0;
         }
         else{
-            setMode(RFM69_MODE_RX);
+            RFM69_setMode(RFM69_MODE_RX);
             count = 1;
         }
         
@@ -154,7 +154,7 @@ int main(void)
         }
         printf("\n\r");
         
-        send(n);
+        RFM69_send("TEST", 4, 10);
         
         mrtDelay(1000);
     }
