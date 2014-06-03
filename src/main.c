@@ -43,6 +43,8 @@
 #include "rfm69.h"
 
 
+char data_rx[64];
+
 #if defined(__CODE_RED)
 #include <cr_section_macros.h>
 #include <NXP/crp.h>
@@ -73,7 +75,7 @@ int main(void)
 {
     
     int navmode = 9, count = 0;
-    uint8_t data;
+    uint8_t data, rx_len;
     
     /* Initialise the GPIO block */
     gpioInit();
@@ -91,6 +93,8 @@ int main(void)
     printf("Hello, LPC810!\n\r");
     
     RFM69_init();
+
+    printf("Done\n\r");
 
     //setMode(RFM69_MODE_TX);
     
@@ -110,52 +114,41 @@ int main(void)
         printf("Data: %d,%d,%d,%d,%d,%d\n\r", lat, lon, alt, navmode, lock, sats);
         printf("Errors: %d,%d\n\r", GPSerror, serialBuffer_write);
          */
-        data = spiRead(RFM69_REG_10_VERSION);
-        printf("Rx: 0x%02x\n\r", data);
-        
-        data = spiRead(RFM69_REG_01_OPMODE);
-        printf("Mode: 0x%02x ", data);
-        
-        if(count == 1){
-            RFM69_setMode(RFM69_MODE_TX);
-            count = 0;
-        }
-        else{
-            RFM69_setMode(RFM69_MODE_RX);
-            count = 1;
-        }
-        
-        spiBurstRead(RFM69_REG_01_OPMODE, _buf, 10);
-        
-        printf("Read: ");
-        uint8_t i;
-        for (i = 0; i < 10; i++){
-            printf("0x%02x ", _buf[i]);
-        }
-        printf("\n\r");
-        
-        
+
         //Send data
         uint8_t num_repeats = '5';
         char id[] = "AF";
+        char location_string[] = "0,0,0";
+        uint8_t data_count = 97; // 'a'
         
         //uint8_t n=sprintf(data_temp, "%c[%s]", num_repeats, id);
+        uint8_t n=sprintf(data_temp, "%c%cL%s[%s]", num_repeats, data_count, location_string, id);
         
-        //uint8_t i;
-        uint8_t n = 7;
+        RFM69_send(data_temp, n, 10);
+
+        printf("Tx\n\r");
         
-        for (i = 0; i < n; i++){
-            data_temp[i] = i;
+        RFM69_setMode(RFM69_MODE_RX);
+
+        mrtDelay(100);
+        
+        uint8_t countdown = 100;
+        
+        while (countdown >0){
+            if(RFM69_checkRx() == 1){
+                printf("\r\nData rx'd\r\n");
+                RFM69_recv(data_rx,  &rx_len);
+                printf("%s\n\r",data_rx);
+            }
+            countdown--;
+            mrtDelay(100);
+            printf("%d ", countdown);
         }
-        printf("Transmit: ");
-        //uint8_t i;
-        for (i = 0; i < n; i++){
-            printf("%d ", data_temp[i]);
-        }
-        printf("\n\r");
-        
-        RFM69_send("TEST", 4, 10);
         
         mrtDelay(1000);
+        
+        //int radio_rssi = RFM69_sampleRssi();
+        //printf("RSSI: %d\r\n", radio_rssi);
+        
     }
 }

@@ -54,21 +54,22 @@ uint8_t RFM69_init()
 
 void RFM69_spiFifoWrite(const uint8_t* src, uint8_t len)
 {
+    //
+    uint8_t total_len = len;
+    spiTransmit(LPC_SPI0, (RFM69_REG_00_FIFO | RFM69_SPI_WRITE_MASK), len);
+    spiReceive(LPC_SPI0);
     
-    //Construct FIFO
+    len--;
     
-    //Add length
-    data_temp[0] = len;
+    spiTransmit(LPC_SPI0, len, len);
+    spiReceive(LPC_SPI0);
     
     uint8_t i;
-    uint8_t n = len;
-    
-    for (i = 1; i < n; i++){
-        data_temp[i] = src[i - 1];
+    for (i = 0; i < (total_len - 1); i++){
+        len--;
+        spiTransmit(LPC_SPI0, src[i], len);
+        spiReceive(LPC_SPI0);
     }
-    
-    //Send data
-    spiBurstWrite(RFM69_REG_00_FIFO | RFM69_SPI_WRITE_MASK, len);
 }
 
 void RFM69_setMode(uint8_t newMode)
@@ -93,7 +94,7 @@ uint8_t RFM69_checkRx()
         // Read RSSI register (should be of the packet? - TEST THIS)
         _lastRssi = -(spiRead(RFM69_REG_24_RSSI_VALUE)/2);
         // Clear the radio FIFO (found in HopeRF demo code)
-        clearFifo();
+        RFM69_clearFifo();
         return 1;
     }
     
@@ -167,8 +168,8 @@ void RFM69_SetLnaMode(uint8_t lnaMode) {
 void RFM69_clearFifo() {
     // Must only be called in RX Mode
     // Apparently this works... found in HopeRF demo code
-    setMode(RFM69_MODE_STDBY);
-    setMode(RFM69_MODE_RX);
+    RFM69_setMode(RFM69_MODE_STDBY);
+    RFM69_setMode(RFM69_MODE_RX);
 }
 
 float RFM69_readTemp()
@@ -192,7 +193,8 @@ float RFM69_readTemp()
     // Set transceiver back to original mode
     RFM69_setMode(oldMode);
     // Return processed temperature value
-    //return (168.3+_temperatureFudge) - float(rawTemp);
+    float temperature = (168.3+_temperatureFudge) - rawTemp;
+    return temperature;
 }
 
 int16_t RFM69_lastRssi() {
