@@ -61,7 +61,7 @@ void RFM69_spiFifoWrite(const uint8_t* src, uint8_t len)
     
     len--;
     
-    spiTransmit(LPC_SPI0, len, len);
+    spiTransmit(LPC_SPI0, total_len, len);
     spiReceive(LPC_SPI0);
     
     uint8_t i;
@@ -70,6 +70,17 @@ void RFM69_spiFifoWrite(const uint8_t* src, uint8_t len)
         spiTransmit(LPC_SPI0, src[i], len);
         spiReceive(LPC_SPI0);
     }
+    /*
+    uint8_t i = 0;
+    while (len >= 0){
+        printf("%d %d\r\n", len, i);
+        spiTransmit(LPC_SPI0, src[i], len);
+        spiReceive(LPC_SPI0);
+        
+        len--;
+        i++;
+    }
+     */
 }
 
 void RFM69_setMode(uint8_t newMode)

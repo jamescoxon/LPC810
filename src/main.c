@@ -142,10 +142,10 @@ int main(void)
             }
             countdown--;
             mrtDelay(100);
-            printf("%d ", countdown);
+            //printf("%d ", countdown);
         }
         
-        mrtDelay(1000);
+        //mrtDelay(1000);
         
         //int radio_rssi = RFM69_sampleRssi();
         //printf("RSSI: %d\r\n", radio_rssi);
