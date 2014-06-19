@@ -52,35 +52,28 @@ uint8_t RFM69_init()
     return 1;
 }
 
-void RFM69_spiFifoWrite(const uint8_t* src, uint8_t len)
+void RFM69_spiFifoWrite(const uint8_t* src, int len)
 {
-    //
-    uint8_t total_len = len;
+    
+    len = len + 2;
     spiTransmit(LPC_SPI0, (RFM69_REG_00_FIFO | RFM69_SPI_WRITE_MASK), len);
     spiReceive(LPC_SPI0);
     
     len--;
     
-    spiTransmit(LPC_SPI0, total_len, len);
+    spiTransmit(LPC_SPI0, len, len);
     spiReceive(LPC_SPI0);
     
-    uint8_t i;
-    for (i = 0; i < (total_len - 1); i++){
-        len--;
-        spiTransmit(LPC_SPI0, src[i], len);
-        spiReceive(LPC_SPI0);
-    }
-    /*
+    len--;
+    
     uint8_t i = 0;
     while (len >= 0){
-        printf("%d %d\r\n", len, i);
         spiTransmit(LPC_SPI0, src[i], len);
         spiReceive(LPC_SPI0);
         
         len--;
         i++;
     }
-     */
 }
 
 void RFM69_setMode(uint8_t newMode)
@@ -183,6 +176,7 @@ void RFM69_clearFifo() {
     RFM69_setMode(RFM69_MODE_RX);
 }
 
+/*
 float RFM69_readTemp()
 {
     // Store current transceiver mode
@@ -226,3 +220,4 @@ int16_t RFM69_sampleRssi() {
     _lastRssi = -(spiRead(RFM69_REG_24_RSSI_VALUE)/2);
     return _lastRssi;
 }
+*/

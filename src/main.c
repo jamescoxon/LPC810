@@ -44,6 +44,10 @@
 
 
 char data_rx[64];
+uint8_t data_count = 96; // 'a'
+uint8_t num_repeats = '5';
+char id[] = "AF";
+char location_string[] = "51.3580,1.0208";
 
 #if defined(__CODE_RED)
 #include <cr_section_macros.h>
@@ -90,7 +94,7 @@ int main(void)
     configurePins();
 
     /* Send some text (printf is redirected to UART0) */
-    printf("Hello, LPC810!\n\r");
+    //printf("Hello, LPC810!\n\r");
     
     RFM69_init();
 
@@ -116,15 +120,26 @@ int main(void)
          */
 
         //Send data
-        uint8_t num_repeats = '5';
-        char id[] = "AF";
-        char location_string[] = "0,0,0";
-        uint8_t data_count = 97; // 'a'
+        
+        //**** Packet Tx Count ******
+        //using a byte to keep track of transmit count
+        // its meant to roll over
+        data_count++;
+        //'a' packet is only sent on the first transmission so we need to move it along
+        // when we roll over.
+        // 98 = 'b' up to 122 = 'z'
+        if(data_count > 122){
+            data_count = 98; //'b'
+        }
         
         //uint8_t n=sprintf(data_temp, "%c[%s]", num_repeats, id);
         uint8_t n=sprintf(data_temp, "%c%cL%s[%s]", num_repeats, data_count, location_string, id);
         
-        RFM69_send(data_temp, n, 10);
+        RFM69_setMode(RFM69_MODE_TX);
+        
+        mrtDelay(100);
+        
+        RFM69_send(data_temp, n + 1, 10);
 
         printf("Tx\n\r");
         
@@ -132,11 +147,11 @@ int main(void)
 
         mrtDelay(100);
         
-        uint8_t countdown = 100;
+        int countdown = 1000;
         
         while (countdown >0){
             if(RFM69_checkRx() == 1){
-                printf("\r\nData rx'd\r\n");
+                //printf("\r\nData rx'd\r\n");
                 RFM69_recv(data_rx,  &rx_len);
                 printf("%s\n\r",data_rx);
             }
