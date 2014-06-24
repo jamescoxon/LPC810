@@ -71,7 +71,7 @@ uint8_t spiTransmit(LPC_SPI_TypeDef *SPIx, uint8_t val, uint8_t len)
     }
 }
                                            
-/* Send/receive data via the SPI bus (assumes 8bit data) */
+/* Receive data via the SPI bus (assumes 8bit data) */
 uint8_t spiReceive(LPC_SPI_TypeDef *SPIx)
 {
     
@@ -110,19 +110,5 @@ void spiBurstRead(uint8_t reg, uint8_t* dest, uint8_t len)
     while (len--){
         spiTransmit(LPC_SPI0, 0x00, len);
         *dest++ = spiReceive(LPC_SPI0);
-    }
-}
-
-void spiBurstWrite(uint8_t reg, uint8_t len)
-{
-    uint8_t total_len = len;
-    spiTransmit(LPC_SPI0, (reg | RFM69_SPI_WRITE_MASK), len);
-    spiReceive(LPC_SPI0);
-    
-    uint8_t i;
-    for (i = 0; i < (total_len - 1); i++){
-        len--;
-        spiTransmit(LPC_SPI0, data_temp[i], len);
-        spiReceive(LPC_SPI0);
     }
 }

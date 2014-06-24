@@ -39,6 +39,7 @@ BLINKY_OBJS = main.o \
               rfm69.o \
               mrt.o \
               printf.o \
+              string.o \
               printf-retarget.o \
               system_LPC8xx.o \
               gcc_startup_lpc8xx.o
