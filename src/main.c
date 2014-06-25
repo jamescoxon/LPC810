@@ -123,7 +123,7 @@ void processData(uint8_t len){
                     mrtDelay(100);
                     
                     //Serial.print("Repeat data: "); Serial.println((char*)data_temp);
-                    printf("Repeat data: %s", data_rx);
+                    //printf("Repeat data: %s", data_rx);
                     //transmitData(packet_len);
                     //Ensure we are in TX mode
                     RFM69_setMode(RFM69_MODE_TX);
@@ -211,6 +211,7 @@ int main(void)
         
         //Create the packet
         uint8_t n=sprintf(data_temp, "%c%cL%s[%s]", num_repeats, data_count, location_string, id);
+        //uint8_t n=sprintf(data_temp, "%c%cL%d,%d,%d,%d,%d,%d[%s]", num_repeats, data_count, lat, lon, alt, navmode, lock, sats, id);
         
         transmitData(n);
         
