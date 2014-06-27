@@ -3,15 +3,6 @@
 typedef unsigned long size_t;
 #define NULL ((void*)0)
 
-#define ALIGNED(X) \
-(((long)X & (sizeof (long) - 1)) == 0)
-
-/* Nonzero if either X or Y is not aligned on a "long" boundary.  */
-#define UNALIGNED(X, Y) \
-(((long)X & (sizeof (long) - 1)) | ((long)Y & (sizeof (long) - 1)))
-
-#define DETECTNULL(X) (((X) - 0x01010101) & ~(X) & 0x80808080)
-
 char *strcpy(char *dst0, const char *src0)
 {
     char *s = dst0;
