@@ -33,12 +33,11 @@
  */
 /**************************************************************************/
 #include <stdio.h>
-//#include <string.h>
 #include "LPC8xx.h"
-#include "gpio.h"
+//#include "gpio.h"
 #include "mrt.h"
 #include "uart.h"
-#include "gps.h"
+//#include "gps.h"
 #include "spi.h"
 #include "rfm69.h"
 
@@ -48,12 +47,6 @@ uint8_t data_count = 96; // 'a' - 1 (as the first function will at 1 to make it 
 uint8_t num_repeats = '5';
 char id[] = "AF";
 char location_string[] = "51.3580,1.0208";
-
-#if defined(__CODE_RED)
-#include <cr_section_macros.h>
-#include <NXP/crp.h>
-__CRP const unsigned int CRP_WORD = CRP_NO_CRP ;
-#endif
 
 void configurePins()
 {
@@ -111,8 +104,6 @@ void processData(uint8_t len){
                 data_rx[i] = ',';
                 data_rx[i+1] = '\0';
                 
-                //strcpy(data_temp, (char*)data_rx); //first copy buf to data (bytes to char)
-                
                 if(strstr(data_rx, id) == 0){
                     
                     strcat(data_rx, id); //add ID
@@ -122,9 +113,6 @@ void processData(uint8_t len){
                     //random delay to try and avoid packet collision
                     mrtDelay(100);
                     
-                    //Serial.print("Repeat data: "); Serial.println((char*)data_temp);
-                    //printf("Repeat data: %s", data_rx);
-                    //transmitData(packet_len);
                     //Ensure we are in TX mode
                     RFM69_setMode(RFM69_MODE_TX);
                     mrtDelay(100);
@@ -192,8 +180,8 @@ int main(void)
         mrtDelay(500);
         gps_check_lock();
         mrtDelay(500);
-        */
         
+        */
         //printf("Data: %d,%d,%d,%d,%d,%d\n\r", lat, lon, alt, navmode, lock, sats);
         //printf("Errors: %d,%d\n\r", GPSerror, serialBuffer_write);
         
