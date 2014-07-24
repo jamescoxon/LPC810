@@ -54,17 +54,11 @@ uint8_t RFM69_init()
 
 void RFM69_spiFifoWrite(const uint8_t* src, int len)
 {
-    
-    len = len + 2;
-    spiTransmit(LPC_SPI0, (RFM69_REG_00_FIFO | RFM69_SPI_WRITE_MASK), len);
+    spiTransmit(LPC_SPI0, (RFM69_REG_00_FIFO | RFM69_SPI_WRITE_MASK), 9);
     spiReceive(LPC_SPI0);
     
-    len--;
-    
-    spiTransmit(LPC_SPI0, len, len);
+    spiTransmit(LPC_SPI0, len, 9);
     spiReceive(LPC_SPI0);
-    
-    len--;
     
     uint8_t i = 0;
     while (len >= 0){
@@ -152,7 +146,7 @@ void RFM69_send(const uint8_t* data, uint8_t len, uint8_t power)
     // Wait for packet to be sent
     while(!(spiRead(RFM69_REG_28_IRQ_FLAGS2) & RF_IRQFLAGS2_PACKETSENT)) { };
     // Return Transceiver to original mode
-    RFM69_setMode(oldMode);
+    RFM69_setMode(RFM69_MODE_RX);
     // If we were in high power, switch off High Power Registers
     if(power>17) {
         // Disable High Power Registers

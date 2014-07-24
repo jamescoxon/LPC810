@@ -61,7 +61,6 @@ extern "C" {
 
 void    spiInit     ( LPC_SPI_TypeDef *SPIx, uint32_t div, uint32_t delay );
     uint8_t spiTransmit(LPC_SPI_TypeDef *SPIx, uint8_t val, uint8_t len);
-uint8_t data_temp[64];
 
 #ifdef __cplusplus
 }

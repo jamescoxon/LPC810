@@ -1,9 +1,12 @@
 Adapted from LPC810_CodeBase
 
 * Updated SPI driver
-* Started driver for RFM69 Radio module
+* New driver for RFM69 Radio module
 * UART code using interrupt and buffer
 * GPS code to read Ublox GPS modules
+* Stripped down version of string library
+* Included memcpy
+
 
 LPC810_CodeBase
 ===============

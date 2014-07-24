@@ -41,12 +41,12 @@
 #include "spi.h"
 #include "rfm69.h"
 
-
-char data_rx[64];
+char data_temp[64];
 uint8_t data_count = 96; // 'a' - 1 (as the first function will at 1 to make it 'a'
 uint8_t num_repeats = '5';
-char id[] = "AF";
+char id[] = "AH0";
 char location_string[] = "51.3580,1.0208";
+int rx_packets = 0;
 
 void configurePins()
 {
@@ -58,26 +58,31 @@ void configurePins()
     /* U0_RXD */
     LPC_SWM->PINASSIGN0 = 0xffff0001UL;
     /* SPI0_SCK */
-    LPC_SWM->PINASSIGN3 = 0x05ffffffUL;
+    LPC_SWM->PINASSIGN3 = 0x02ffffffUL;
     /* SPI0_MOSI */
     /* SPI0_MISO */
     /* SPI0_SSEL */
-    LPC_SWM->PINASSIGN4 = 0xff020403UL;
+    LPC_SWM->PINASSIGN4 = 0xff050304UL;
     
     /* Pin Assign 1 bit Configuration */
     LPC_SWM->PINENABLE0 = 0xffffffffUL;
+    
 }
 
 void awaitData(int countdown){
     
     uint8_t rx_len;
     
+    //Clear buffer
+    data_temp[0] = '\0';
+    
     RFM69_setMode(RFM69_MODE_RX);
     
     while (countdown >0){
         if(RFM69_checkRx() == 1){
-            RFM69_recv(data_rx,  &rx_len);
-            printf("%s\n\r",data_rx);
+            RFM69_recv(data_temp,  &rx_len);
+            data_temp[rx_len - 1] = '\0';
+            printf("rx: %s\n\r",data_temp);
             processData(rx_len);
         }
         countdown--;
@@ -91,34 +96,40 @@ void processData(uint8_t len){
     char string_end[] = "]";
     
     for (i=0; i<len; i++) {
-        if (data_rx[i] == ']') {
+        if (data_temp[i] == ']') {
             //Print the string
-            data_rx[i+1] = '\0';
+            data_temp[i+1] = '\0';
             
             //Serial.print("rx: "); Serial.println((char*)buf);
             
-            if (data_rx[0] > '0'){
+            if (data_temp[0] > '0'){
                 //Reduce the repeat value
-                data_rx[0] = data_rx[0] - 1;
+                data_temp[0] = data_temp[0] - 1;
                 //Now add , and end line and let string functions do the rest
-                data_rx[i] = ',';
-                data_rx[i+1] = '\0';
+                data_temp[i] = ',';
+                data_temp[i+1] = '\0';
                 
-                if(strstr(data_rx, id) == 0){
+                if(strstr(data_temp, id) == 0){
                     
-                    strcat(data_rx, id); //add ID
-                    strcat(data_rx, string_end); //add ending
+                    strcat(data_temp, id); //add ID
+                    strcat(data_temp, string_end); //add ending
                     
-                    packet_len = strlen(data_rx);
+                    packet_len = strlen(data_temp);
                     //random delay to try and avoid packet collision
                     mrtDelay(100);
                     
                     //Ensure we are in TX mode
-                    RFM69_setMode(RFM69_MODE_TX);
-                    mrtDelay(100);
+                    //RFM69_setMode(RFM69_MODE_TX);
+                    //mrtDelay(100);
                     
+                    rx_packets++;
                     //Send the data (need to include the length of the packet and power in dbmW)
-                    RFM69_send(data_rx, packet_len + 1, 10);
+                    RFM69_send(data_temp, packet_len, 20);
+                    
+                    //mrtDelay(100);
+                    //Ensure we are in RX mode
+                    RFM69_setMode(RFM69_MODE_RX);
+                    
                     
                     break;
                 }
@@ -137,13 +148,17 @@ void processData(uint8_t len){
 void transmitData(uint8_t i){
     
     //Ensure we are in TX mode
-    RFM69_setMode(RFM69_MODE_TX);
-    mrtDelay(100);
+    //RFM69_setMode(RFM69_MODE_TX);
+    //mrtDelay(100);
     
     //Send the data (need to include the length of the packet and power in dbmW)
-    RFM69_send(data_temp, i + 1, 10);
+    RFM69_send(data_temp, i, 20);
     
     //printf("Tx\n\r");
+    
+    //mrtDelay(100);
+    //Ensure we are in RX mode
+    RFM69_setMode(RFM69_MODE_RX);
 }
 
 int main(void)
@@ -165,23 +180,23 @@ int main(void)
     
     RFM69_init();
 
-    //printf("Done\n\r");
+    printf("Done\n\r");
     
     //setupGPS();
     
     while(1)
     {
         
-        /*
-        mrtDelay(5000);
-        navmode = gps_check_nav();
-        mrtDelay(500);
-        gps_get_position();
-        mrtDelay(500);
-        gps_check_lock();
-        mrtDelay(500);
         
-        */
+        //mrtDelay(5000);
+        //navmode = gps_check_nav();
+        //mrtDelay(500);
+        //gps_get_position();
+        //mrtDelay(500);
+        //gps_check_lock();
+        //mrtDelay(500);
+        
+        
         //printf("Data: %d,%d,%d,%d,%d,%d\n\r", lat, lon, alt, navmode, lock, sats);
         //printf("Errors: %d,%d\n\r", GPSerror, serialBuffer_write);
         
@@ -197,13 +212,20 @@ int main(void)
             data_count = 98; //'b'
         }
         
+        //Clear buffer
+        data_temp[0] = '\0';
+        
         //Create the packet
+        //uint8_t n=sprintf(data_temp, "%c%cC%d[%s]", num_repeats, data_count, rx_packets, id);
         uint8_t n=sprintf(data_temp, "%c%cL%s[%s]", num_repeats, data_count, location_string, id);
         //uint8_t n=sprintf(data_temp, "%c%cL%d,%d,%d,%d,%d,%d[%s]", num_repeats, data_count, lat, lon, alt, navmode, lock, sats, id);
         
-        transmitData(n);
+        transmitData(n + 1);
         
         awaitData(1000);
         
     }
+    
 }
+
+//
