@@ -215,9 +215,21 @@ int main(void)
         //Clear buffer
         data_temp[0] = '\0';
         
+        //Read internal temperature
+        int int_temp = RFM69_readTemp();
         //Create the packet
+        
+        uint8_t n;
+        
+        
+        if (data_count == 97){
+            n=sprintf(data_temp, "%c%cL%s[%s]", num_repeats, data_count, location_string, id);
+        }
+        else{
+            n=sprintf(data_temp, "%c%cT%d[%s]", num_repeats, data_count, int_temp, id);
+        }
+        
         //uint8_t n=sprintf(data_temp, "%c%cC%d[%s]", num_repeats, data_count, rx_packets, id);
-        uint8_t n=sprintf(data_temp, "%c%cL%s[%s]", num_repeats, data_count, location_string, id);
         //uint8_t n=sprintf(data_temp, "%c%cL%d,%d,%d,%d,%d,%d[%s]", num_repeats, data_count, lat, lon, alt, navmode, lock, sats, id);
         
         transmitData(n + 1);

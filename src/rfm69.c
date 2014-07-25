@@ -24,12 +24,6 @@ void* memcpy(void* dest, const void* src, size_t count) {
     return dest;
 }
 
-void RFM69(float tempFudge)
-{
-    _mode = RFM69_MODE_RX;
-    _temperatureFudge = tempFudge;
-}
-
 uint8_t RFM69_init()
 {
     mrtDelay(12);
@@ -170,8 +164,8 @@ void RFM69_clearFifo() {
     RFM69_setMode(RFM69_MODE_RX);
 }
 
-/*
-float RFM69_readTemp()
+
+int RFM69_readTemp()
 {
     // Store current transceiver mode
     uint8_t oldMode = _mode;
@@ -182,7 +176,7 @@ float RFM69_readTemp()
     spiWrite(RFM69_REG_4E_TEMP1, RF_TEMP1_MEAS_START);
     // Check Temperature Measurement has started
     if(!(RF_TEMP1_MEAS_RUNNING && spiRead(RFM69_REG_4E_TEMP1))){
-        return 255.0;
+        return 255;
     }
     // Wait for Measurement to complete
     while(RF_TEMP1_MEAS_RUNNING && spiRead(RFM69_REG_4E_TEMP1)) { };
@@ -192,10 +186,11 @@ float RFM69_readTemp()
     // Set transceiver back to original mode
     RFM69_setMode(oldMode);
     // Return processed temperature value
-    float temperature = (168.3+_temperatureFudge) - rawTemp;
+    int temperature = 168 - rawTemp;
     return temperature;
 }
 
+/*
 int16_t RFM69_lastRssi() {
     return _lastRssi;
 }
