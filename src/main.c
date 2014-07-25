@@ -41,6 +41,10 @@
 #include "spi.h"
 #include "rfm69.h"
 
+
+// Comment out if you don't want printing to serial (if isolated node)
+//#define DEBUG
+
 char data_temp[64];
 uint8_t data_count = 96; // 'a' - 1 (as the first function will at 1 to make it 'a'
 uint8_t num_repeats = '5';
@@ -82,7 +86,9 @@ void awaitData(int countdown){
         if(RFM69_checkRx() == 1){
             RFM69_recv(data_temp,  &rx_len);
             data_temp[rx_len - 1] = '\0';
-            printf("rx: %s\n\r",data_temp);
+            #ifdef DEBUG
+                printf("rx: %s\n\r",data_temp);
+            #endif
             processData(rx_len);
         }
         countdown--;
@@ -118,15 +124,10 @@ void processData(uint8_t len){
                     //random delay to try and avoid packet collision
                     mrtDelay(100);
                     
-                    //Ensure we are in TX mode
-                    //RFM69_setMode(RFM69_MODE_TX);
-                    //mrtDelay(100);
-                    
                     rx_packets++;
                     //Send the data (need to include the length of the packet and power in dbmW)
                     RFM69_send(data_temp, packet_len, 20);
                     
-                    //mrtDelay(100);
                     //Ensure we are in RX mode
                     RFM69_setMode(RFM69_MODE_RX);
                     
@@ -175,12 +176,14 @@ int main(void)
     /* Configure the multi-rate timer for 1ms ticks */
     mrtInit(__SYSTEM_CLOCK/1000);
     
-    /* Configure the switch matrix (setup pins for UART0 and GPIO) */
+    /* Configure the switch matrix (setup pins for UART0 and SPI) */
     configurePins();
     
     RFM69_init();
 
-    printf("Done\n\r");
+    #ifdef DEBUG
+        printf("Done\n\r");
+    #endif
     
     //setupGPS();
     
