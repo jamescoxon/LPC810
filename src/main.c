@@ -43,12 +43,13 @@
 
 
 // Comment out if you don't want printing to serial (if isolated node)
-//#define DEBUG
+#define DEBUG
 
 char data_temp[64];
-uint8_t data_count = 96; // 'a' - 1 (as the first function will at 1 to make it 'a'
+uint8_t data_count = 95; // 'a' - 1 (as the first function will at 1 to make it 'a'
+// attempt to overcome issue of problem with first packet
 uint8_t num_repeats = '5';
-char id[] = "AH0";
+char id[] = "AH1";
 char location_string[] = "51.3580,1.0208";
 int rx_packets = 0;
 
@@ -106,8 +107,6 @@ void processData(uint8_t len){
             //Print the string
             data_temp[i+1] = '\0';
             
-            //Serial.print("rx: "); Serial.println((char*)buf);
-            
             if (data_temp[0] > '0'){
                 //Reduce the repeat value
                 data_temp[0] = data_temp[0] - 1;
@@ -148,25 +147,15 @@ void processData(uint8_t len){
 
 void transmitData(uint8_t i){
     
-    //Ensure we are in TX mode
-    //RFM69_setMode(RFM69_MODE_TX);
-    //mrtDelay(100);
-    
     //Send the data (need to include the length of the packet and power in dbmW)
     RFM69_send(data_temp, i, 20);
     
-    //printf("Tx\n\r");
-    
-    //mrtDelay(100);
     //Ensure we are in RX mode
     RFM69_setMode(RFM69_MODE_RX);
 }
 
 int main(void)
 {
-    
-    int navmode = 9, count = 0;
-    
     /* Initialise the GPIO block */
     gpioInit();
     
@@ -185,6 +174,7 @@ int main(void)
         printf("Done\n\r");
     #endif
     
+    //int navmode = 9;
     //setupGPS();
     
     while(1)
