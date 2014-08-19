@@ -32,25 +32,32 @@
  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 /**************************************************************************/
+// Comment out if you don't want printing to serial (if isolated node)
+#define DEBUG
+
+// Comment out if you don't want GPS (Ublox binary)
+//#define GPS
+
 #include <stdio.h>
 #include "LPC8xx.h"
 //#include "gpio.h"
 #include "mrt.h"
 #include "uart.h"
-//#include "gps.h"
 #include "spi.h"
 #include "rfm69.h"
 
+#ifdef GPS
+    #include "gps.h"
+#endif
 
-// Comment out if you don't want printing to serial (if isolated node)
-#define DEBUG
+//NODE SPECIFIC DETAILS - need to be changed
+uint8_t num_repeats = '5';
+char id[] = "BALL1";
+char location_string[] = "52.0937,-1.0161";
 
 char data_temp[64];
 uint8_t data_count = 95; // 'a' - 1 (as the first function will at 1 to make it 'a'
 // attempt to overcome issue of problem with first packet
-uint8_t num_repeats = '5';
-char id[] = "AH1";
-char location_string[] = "51.3580,1.0208";
 int rx_packets = 0;
 
 void configurePins()
@@ -148,7 +155,7 @@ void processData(uint8_t len){
 void transmitData(uint8_t i){
     
     //Send the data (need to include the length of the packet and power in dbmW)
-    RFM69_send(data_temp, i, 20);
+    RFM69_send(data_temp, i, 20); //20dbmW
     
     //Ensure we are in RX mode
     RFM69_setMode(RFM69_MODE_RX);
@@ -160,7 +167,7 @@ int main(void)
     gpioInit();
     
     /* Initialise the UART0 block for printf output */
-    uart0Init(115200);
+    uart0Init(9600);
     
     /* Configure the multi-rate timer for 1ms ticks */
     mrtInit(__SYSTEM_CLOCK/1000);
@@ -174,25 +181,28 @@ int main(void)
         printf("Done\n\r");
     #endif
     
-    //int navmode = 9;
-    //setupGPS();
+    #ifdef GPS
+        int navmode = 9;
+        setupGPS();
+    #endif
     
     while(1)
     {
         
+        #ifdef GPS
+            mrtDelay(5000);
+            navmode = gps_check_nav();
+            mrtDelay(500);
+            gps_get_position();
+            mrtDelay(500);
+            gps_check_lock();
+            mrtDelay(500);
+
         
-        //mrtDelay(5000);
-        //navmode = gps_check_nav();
-        //mrtDelay(500);
-        //gps_get_position();
-        //mrtDelay(500);
-        //gps_check_lock();
-        //mrtDelay(500);
         
-        
-        //printf("Data: %d,%d,%d,%d,%d,%d\n\r", lat, lon, alt, navmode, lock, sats);
-        //printf("Errors: %d,%d\n\r", GPSerror, serialBuffer_write);
-        
+            //printf("Data: %d,%d,%d,%d,%d,%d\n\r", lat, lon, alt, navmode, lock, sats);
+            //printf("Errors: %d,%d\n\r", GPSerror, serialBuffer_write);
+        #endif
         
         //**** Packet Tx Count ******
         //using a byte to keep track of transmit count
@@ -207,13 +217,14 @@ int main(void)
         
         //Clear buffer
         data_temp[0] = '\0';
+        uint8_t n;
         
+        #ifdef GPS
+            n=sprintf(data_temp, "%c%cL%d,%d,%d[%s]", num_repeats, data_count, lat, lon, alt, id);
+        #else
         //Read internal temperature
         int int_temp = RFM69_readTemp();
         //Create the packet
-        
-        uint8_t n;
-        
         
         if (data_count == 97){
             n=sprintf(data_temp, "%c%cL%s[%s]", num_repeats, data_count, location_string, id);
@@ -224,6 +235,7 @@ int main(void)
         
         //uint8_t n=sprintf(data_temp, "%c%cC%d[%s]", num_repeats, data_count, rx_packets, id);
         //uint8_t n=sprintf(data_temp, "%c%cL%d,%d,%d,%d,%d,%d[%s]", num_repeats, data_count, lat, lon, alt, navmode, lock, sats, id);
+        #endif
         
         transmitData(n + 1);
         
