@@ -52,8 +52,8 @@
 
 //NODE SPECIFIC DETAILS - need to be changed
 uint8_t num_repeats = '5';
-char id[] = "BALL1";
-char location_string[] = "52.0937,-1.0161";
+char id[] = "DB01";
+char location_string[] = "52.52879697,0.2207458";
 
 char data_temp[64];
 uint8_t data_count = 95; // 'a' - 1 (as the first function will at 1 to make it 'a'
