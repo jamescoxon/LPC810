@@ -154,6 +154,10 @@ void processData(uint8_t len){
 
 void transmitData(uint8_t i){
     
+    #ifdef DEBUG
+        printf(data_temp);
+        printf("\n\r");
+    #endif
     //Send the data (need to include the length of the packet and power in dbmW)
     RFM69_send(data_temp, i, 20); //20dbmW
     
