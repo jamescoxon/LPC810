@@ -1,7 +1,7 @@
 #ifndef RFM69Config_h
 #define RFM69Config_h
 
-#include "RFM69.h"
+#include "rfm69.h"
 
 /*PROGMEM */ static const uint8_t CONFIG[][2] =
 {
