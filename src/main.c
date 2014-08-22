@@ -54,6 +54,7 @@
 uint8_t num_repeats = '5';
 char id[] = "BALL1";
 char location_string[] = "52.0937,-1.0161";
+uint8_t tx_gap = 1000; // milliseconds between tx = tx_gap * 100, therefore 1000 = 100seconds
 
 char data_temp[64];
 uint8_t data_count = 95; // 'a' - 1 (as the first function will at 1 to make it 'a'
@@ -243,7 +244,7 @@ int main(void)
         
         transmitData(n + 1);
         
-        awaitData(1000);
+        awaitData(tx_gap);
         
     }
     
