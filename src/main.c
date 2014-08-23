@@ -51,13 +51,15 @@
 #endif
 
 //NODE SPECIFIC DETAILS - need to be changed
-uint8_t num_repeats = '5';
-char id[] = "BALL1";
-char location_string[] = "52.0937,-1.0161";
-int tx_gap = 1000; // milliseconds between tx = tx_gap * 100, therefore 1000 = 100seconds
+#define NUM_REPEATS                     5
+#define ID                        "BALL1"
+#define LOCATION_STRING         "52.316,13.62"
+
+uint8_t power_output = 1; //in dbmW
+int tx_gap = 500; // milliseconds between tx = tx_gap * 100, therefore 1000 = 100seconds
 
 char data_temp[64];
-uint8_t data_count = 95; // 'a' - 1 (as the first function will at 1 to make it 'a'
+uint8_t data_count = 96; // 'a' - 1 (as the first function will at 1 to make it 'a'
 // attempt to overcome issue of problem with first packet
 int rx_packets = 0;
 
@@ -105,59 +107,54 @@ void awaitData(int countdown){
     }
 }
 
-void processData(uint8_t len){
-    
+inline void processData(uint32_t len) {
     uint8_t i, packet_len;
-    char string_end[] = "]";
     
-    for (i=0; i<len; i++) {
-        if (data_temp[i] == ']') {
-            //Print the string
-            data_temp[i+1] = '\0';
-            
-            if (data_temp[0] > '0'){
-                //Reduce the repeat value
-                data_temp[0] = data_temp[0] - 1;
-                //Now add , and end line and let string functions do the rest
-                data_temp[i] = ',';
-                data_temp[i+1] = '\0';
-                
-                if(strstr(data_temp, id) == 0){
-                    
-                    strcat(data_temp, id); //add ID
-                    strcat(data_temp, string_end); //add ending
-                    
-                    packet_len = strlen(data_temp);
-                    //random delay to try and avoid packet collision
-                    mrtDelay(100);
-                    
-                    rx_packets++;
-                    //Send the data (need to include the length of the packet and power in dbmW)
-                    RFM69_send(data_temp, packet_len, 20);
-                    
-                    //Ensure we are in RX mode
-                    RFM69_setMode(RFM69_MODE_RX);
-                    
-                    
-                    break;
-                }
-                else {
-                    break;
-                }      
-            }
-            else {
-                break;
-            }
-        }
-    
-}
+    for(i=0; i<len; i++) {
+        if(data_temp[i] != ']')
+            continue;
+        
+        //Print the string
+        data_temp[i+1] = '\0';
+        
+        if(data_temp[0] <= '0')
+            break;
+        
+        //Reduce the repeat value
+        data_temp[0] = data_temp[0] - 1;
+        //Now add , and end line and let string functions do the rest
+        data_temp[i] = ',';
+        data_temp[i+1] = '\0';
+        
+        if(strstr(data_temp, ID) != 0)
+            break;
+        
+        
+        strcat(data_temp, ID); //add ID
+        strcat(data_temp, "]"); //add ending
+        
+        packet_len = strlen(data_temp);
+        //random delay to try and avoid packet collision
+        mrtDelay(100);
+        
+        rx_packets++;
+        //Send the data (need to include the length of the packet and power in dbmW)
+        RFM69_send(data_temp, packet_len, 10);
+#ifdef DEBUG
+        printf("tx: %s\n\r",data_temp);
+#endif
+        
+        //Ensure we are in RX mode
+        RFM69_setMode(RFM69_MODE_RX);
+        break;
+    }
 }
 
 void transmitData(uint8_t i){
     
     #ifdef DEBUG
         printf(data_temp);
-        printf("\n\r");
+        printf(" %d\n\r", i);
     #endif
     //Send the data (need to include the length of the packet and power in dbmW)
     RFM69_send(data_temp, i, 20); //20dbmW
@@ -171,8 +168,13 @@ int main(void)
     /* Initialise the GPIO block */
     gpioInit();
     
+#ifdef GPS
     /* Initialise the UART0 block for printf output */
     uart0Init(9600);
+#else
+    /* Initialise the UART0 block for printf output */
+    uart0Init(115200);
+#endif
     
     /* Configure the multi-rate timer for 1ms ticks */
     mrtInit(__SYSTEM_CLOCK/1000);
@@ -225,24 +227,24 @@ int main(void)
         uint8_t n;
         
         #ifdef GPS
-            n=sprintf(data_temp, "%c%cL%d,%d,%d[%s]", num_repeats, data_count, lat, lon, alt, id);
+            n=sprintf(data_temp, "%d%cL%d,%d,%d[%s]", NUM_REPEATS, data_count, lat, lon, alt, ID);
         #else
         //Read internal temperature
         int int_temp = RFM69_readTemp();
         //Create the packet
         
         if (data_count == 97){
-            n=sprintf(data_temp, "%c%cL%s[%s]", num_repeats, data_count, location_string, id);
+            n=sprintf(data_temp, "%d%cL%s[%s]", NUM_REPEATS, data_count, LOCATION_STRING, ID);
         }
         else{
-            n=sprintf(data_temp, "%c%cT%d[%s]", num_repeats, data_count, int_temp, id);
+            n=sprintf(data_temp, "%d%cT%d[%s]", NUM_REPEATS, data_count, int_temp, ID);
         }
         
         //uint8_t n=sprintf(data_temp, "%c%cC%d[%s]", num_repeats, data_count, rx_packets, id);
         //uint8_t n=sprintf(data_temp, "%c%cL%d,%d,%d,%d,%d,%d[%s]", num_repeats, data_count, lat, lon, alt, navmode, lock, sats, id);
         #endif
         
-        transmitData(n + 1);
+        transmitData(n);
         
         awaitData(tx_gap);
         
