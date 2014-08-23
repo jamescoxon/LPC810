@@ -52,10 +52,10 @@
 
 //NODE SPECIFIC DETAILS - need to be changed
 #define NUM_REPEATS                     5
-#define ID                        "BALL1"
+#define NODE_ID                        "BALL1"
 #define LOCATION_STRING         "52.316,13.62"
 
-uint8_t power_output = 1; //in dbmW
+uint8_t power_output = 2; //in dbmW
 int tx_gap = 500; // milliseconds between tx = tx_gap * 100, therefore 1000 = 100seconds
 
 char data_temp[64];
@@ -126,11 +126,11 @@ inline void processData(uint32_t len) {
         data_temp[i] = ',';
         data_temp[i+1] = '\0';
         
-        if(strstr(data_temp, ID) != 0)
+        if(strstr(data_temp, NODE_ID) != 0)
             break;
         
         
-        strcat(data_temp, ID); //add ID
+        strcat(data_temp, NODE_ID); //add ID
         strcat(data_temp, "]"); //add ending
         
         packet_len = strlen(data_temp);
@@ -153,11 +153,10 @@ inline void processData(uint32_t len) {
 void transmitData(uint8_t i){
     
     #ifdef DEBUG
-        printf(data_temp);
-        printf(" %d\n\r", i);
+        printf("tx: %s\n\r",data_temp);
     #endif
     //Send the data (need to include the length of the packet and power in dbmW)
-    RFM69_send(data_temp, i, 20); //20dbmW
+    RFM69_send(data_temp, i, power_output); //20dbmW
     
     //Ensure we are in RX mode
     RFM69_setMode(RFM69_MODE_RX);
@@ -227,17 +226,17 @@ int main(void)
         uint8_t n;
         
         #ifdef GPS
-            n=sprintf(data_temp, "%d%cL%d,%d,%d[%s]", NUM_REPEATS, data_count, lat, lon, alt, ID);
+            n=sprintf(data_temp, "%d%cL%d,%d,%d[%s]", NUM_REPEATS, data_count, lat, lon, alt, NODE_ID);
         #else
         //Read internal temperature
         int int_temp = RFM69_readTemp();
         //Create the packet
         
         if (data_count == 97){
-            n=sprintf(data_temp, "%d%cL%s[%s]", NUM_REPEATS, data_count, LOCATION_STRING, ID);
+            n=sprintf(data_temp, "%d%cL%s[%s]", NUM_REPEATS, data_count, LOCATION_STRING, NODE_ID);
         }
         else{
-            n=sprintf(data_temp, "%d%cT%d[%s]", NUM_REPEATS, data_count, int_temp, ID);
+            n=sprintf(data_temp, "%d%cT%d[%s]", NUM_REPEATS, data_count, int_temp, NODE_ID);
         }
         
         //uint8_t n=sprintf(data_temp, "%c%cC%d[%s]", num_repeats, data_count, rx_packets, id);
