@@ -29,7 +29,7 @@ uint8_t RFM69_init()
     mrtDelay(12);
     
     //Configure SPI
-    spiInit(LPC_SPI0,12,0);
+    spiInit(LPC_SPI0,6,0);
     
     mrtDelay(100);
     
@@ -48,7 +48,6 @@ uint8_t RFM69_init()
 
 void RFM69_spiFifoWrite(const uint8_t* src, int len)
 {
-    //printf("Fifo: %d", len);
     
     spiTransmit(LPC_SPI0, (RFM69_REG_00_FIFO | RFM69_SPI_WRITE_MASK), 9);
     spiReceive(LPC_SPI0);
@@ -64,8 +63,6 @@ void RFM69_spiFifoWrite(const uint8_t* src, int len)
         len--;
         i++;
     }
-    
-    //printf("%d\r\n", len);
 }
 
 void RFM69_setMode(uint8_t newMode)
@@ -118,6 +115,9 @@ void RFM69_send(const uint8_t* data, uint8_t len, uint8_t power)
     memcpy(_buf, data, len);
     // Update TX Buffer Size
     _bufLen = len;
+    
+    RFM69_clearFifo();
+    
     // Start Transmitter
     RFM69_setMode(RFM69_MODE_TX);
     // Set up PA
