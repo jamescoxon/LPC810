@@ -96,7 +96,7 @@ uint8_t spiWrite(uint8_t reg, uint8_t val){
     
     spiTransmit(LPC_SPI0, (reg | RFM69_SPI_WRITE_MASK), 1); // Send the address with the write mask on
     spiReceive(LPC_SPI0);
-    spiTransmit(LPC_SPI0, val, 0); // Send the address with the write mask on
+    spiTransmit(LPC_SPI0, val, 0);
     spiReceive(LPC_SPI0);
 
 }

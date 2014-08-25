@@ -29,7 +29,7 @@ uint8_t RFM69_init()
     mrtDelay(12);
     
     //Configure SPI
-    spiInit(LPC_SPI0,12,0);
+    spiInit(LPC_SPI0,24,0);
     
     mrtDelay(100);
     
@@ -48,11 +48,14 @@ uint8_t RFM69_init()
 
 void RFM69_spiFifoWrite(const uint8_t* src, int len)
 {
+    
     spiTransmit(LPC_SPI0, (RFM69_REG_00_FIFO | RFM69_SPI_WRITE_MASK), 9);
     spiReceive(LPC_SPI0);
     
     spiTransmit(LPC_SPI0, len, 9);
     spiReceive(LPC_SPI0);
+    
+    len--;
     
     uint8_t i = 0;
     while (len >= 0){
@@ -63,7 +66,6 @@ void RFM69_spiFifoWrite(const uint8_t* src, int len)
         i++;
     }
 }
-
 void RFM69_setMode(uint8_t newMode)
 {
     spiWrite(RFM69_REG_01_OPMODE, (spiRead(RFM69_REG_01_OPMODE) & 0xE3) | newMode);
@@ -114,6 +116,9 @@ void RFM69_send(const uint8_t* data, uint8_t len, uint8_t power)
     memcpy(_buf, data, len);
     // Update TX Buffer Size
     _bufLen = len;
+    
+    RFM69_clearFifo();
+    
     // Start Transmitter
     RFM69_setMode(RFM69_MODE_TX);
     // Set up PA
@@ -138,7 +143,7 @@ void RFM69_send(const uint8_t* data, uint8_t len, uint8_t power)
     // Clear MCU TX Buffer
     _bufLen = 0;
     // Wait for packet to be sent
-    while(!(spiRead(RFM69_REG_28_IRQ_FLAGS2) & RF_IRQFLAGS2_PACKETSENT)) { };
+    while(!(spiRead(RFM69_REG_28_IRQ_FLAGS2) & RF_IRQFLAGS2_PACKETSENT)) {};
     // Return Transceiver to original mode
     RFM69_setMode(RFM69_MODE_RX);
     // If we were in high power, switch off High Power Registers
