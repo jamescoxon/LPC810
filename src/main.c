@@ -109,43 +109,45 @@ void awaitData(int countdown){
 
 inline void processData(uint32_t len) {
     uint8_t i, packet_len;
-    char *e;
-    char final_string[64];
     
-    e = strstr(data_temp, ']');
-    i = (int)(e - data_temp);
-    
-    if(i < 1){
-        return;
-    }
-    
-    data_temp[i+1] = '\0';
-    
-    //Check that we can still repeat
-    if(data_temp[0] <= '0')
-        return;
-    
-    //Reduce the repeat value
-    data_temp[0] = data_temp[0] - 1;
-    //Now add , and end line and let string functions do the rest
-    
-    if(strstr(data_temp, NODE_ID) != 0)
-        return;
-    
-    packet_len = sprintf(final_string, "%s,%s]", data_temp, NODE_ID);
-    
-    //random delay to try and avoid packet collision
-    mrtDelay(100);
-    
-    rx_packets++;
-    //Send the data (need to include the length of the packet and power in dbmW)
-    RFM69_send(data_temp, packet_len, power_output);
+    for(i=0; i<len; i++) {
+        if(data_temp[i] != ']')
+            continue;
+        
+        //Print the string
+        data_temp[i+1] = '\0';
+        
+        if(data_temp[0] <= '0')
+            break;
+        
+        //Reduce the repeat value
+        data_temp[0] = data_temp[0] - 1;
+        //Now add , and end line and let string functions do the rest
+        data_temp[i] = ',';
+        data_temp[i+1] = '\0';
+        
+        if(strstr(data_temp, NODE_ID) != 0)
+            break;
+        
+        
+        strcat(data_temp, NODE_ID); //add ID
+        strcat(data_temp, "]"); //add ending
+        
+        packet_len = strlen(data_temp);
+        //random delay to try and avoid packet collision
+        mrtDelay(100);
+        
+        rx_packets++;
+        //Send the data (need to include the length of the packet and power in dbmW)
+        RFM69_send(data_temp, packet_len, 10);
 #ifdef DEBUG
-    printf("tx: %s\n\r",data_temp);
+        printf("tx: %s\n\r",data_temp);
 #endif
-    
-    //Ensure we are in RX mode
-    RFM69_setMode(RFM69_MODE_RX);
+        
+        //Ensure we are in RX mode
+        RFM69_setMode(RFM69_MODE_RX);
+        break;
+    }
 }
 
 void transmitData(uint8_t i){
