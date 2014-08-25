@@ -56,7 +56,7 @@
 #define LOCATION_STRING         "52.316,13.62"
 
 uint8_t power_output = 2; //in dbmW
-int tx_gap = 500; // milliseconds between tx = tx_gap * 100, therefore 1000 = 100seconds
+int tx_gap = 100; // milliseconds between tx = tx_gap * 100, therefore 1000 = 100seconds
 
 char data_temp[64];
 uint8_t data_count = 96; // 'a' - 1 (as the first function will at 1 to make it 'a'
