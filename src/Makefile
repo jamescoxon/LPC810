@@ -10,8 +10,8 @@ CROSS = arm-none-eabi-
 CPU = -mthumb -mcpu=cortex-m0plus -MD
 FPU = # -mfloat-abi=soft
 
-FILENAME = blinky
-LINKERSCRIPT = blinky.ld
+FILENAME = ukhasnet
+LINKERSCRIPT = ukhasnet.ld
 
 CFLAGS+= -Os --specs=nano.specs -ffunction-sections -fdata-sections -fno-builtin
 
@@ -32,23 +32,23 @@ LDFLAGS += --gc-sections
 INC += -I../cmsis
 CFLAGS += $(INC) -D__USE_CMSIS # -DCLOCK_SETUP=1
 
-BLINKY_OBJS = main.o \
-              gpio.o \
-              uart.o \
-              gps.o \
-              spi.o \
-              rfm69.o \
-              mrt.o \
-              printf.o \
-              string.o \
-              printf-retarget.o \
-              system_LPC8xx.o \
-              gcc_startup_lpc8xx.o
+UKHASNET_OBJS = main.o \
+                gpio.o \
+                uart.o \
+                gps.o \
+                spi.o \
+                rfm69.o \
+                mrt.o \
+                printf.o \
+                string.o \
+                printf-retarget.o \
+                system_LPC8xx.o \
+                gcc_startup_lpc8xx.o
 
 all: $(FILENAME).bin
 
-blinky.axf: $(FILENAME).ld $(BLINKY_OBJS)
-	@$(LD) -o $@ $(LDFLAGS) -T $(LINKERSCRIPT) $(BLINKY_OBJS) $(LIBGCC)
+ukhasnet.axf: $(FILENAME).ld $(UKHASNET_OBJS)
+	@$(LD) -o $@ $(LDFLAGS) -T $(LINKERSCRIPT) $(UKHASNET_OBJS) $(LIBGCC)
 	-@echo ""
 	@$(SIZE) $(FILENAME).axf
 

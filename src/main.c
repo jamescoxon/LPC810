@@ -35,12 +35,11 @@
 // Comment out if you don't want printing to serial (if isolated node)
 #define DEBUG
 
-// Comment out if you don't want GPS (Ublox binary)
+// Comment out if you don't want GPS (ublox binary)
 //#define GPS
 
 #include <stdio.h>
 #include "LPC8xx.h"
-//#include "gpio.h"
 #include "mrt.h"
 #include "uart.h"
 #include "spi.h"
@@ -51,32 +50,36 @@
 #endif
 
 //NODE SPECIFIC DETAILS - need to be changed
-#define NUM_REPEATS                     5
-#define NODE_ID                        "BALL1"
-#define LOCATION_STRING         "52.316,13.62"
+#define NUM_REPEATS			5
+#define NODE_ID				"LDS"
+#define LOCATION_STRING		"52.316,13.62"
+#define POWER_OUTPUT		20				// Output power in dbmW
+#define TX_GAP				100				// Milliseconds between tx = tx_gap * 100, therefore 1000 = 100 seconds
+#define MAX_TX_CHARS		32				// Maximum chars which can be transmitted in a single packet
 
-uint8_t power_output = 2; //in dbmW
-int tx_gap = 500; // milliseconds between tx = tx_gap * 100, therefore 1000 = 100seconds
-
+char data_out_temp[MAX_TX_CHARS+1];
 char data_temp[64];
+
 uint8_t data_count = 96; // 'a' - 1 (as the first function will at 1 to make it 'a'
-// attempt to overcome issue of problem with first packet
+						 // attempt to overcome issue of problem with first packet
 int rx_packets = 0;
 
-void configurePins()
-{
-    /* Enable SWM clock */
+/**
+ * Setup all pins in the switch matrix of the LPC810
+ */
+void configurePins() {
+    // Enable SWM clock
     LPC_SYSCON->SYSAHBCLKCTRL |= (1<<7);
     
-    /* Pin Assign 8 bit Configuration */
-    /* U0_TXD */
-    /* U0_RXD */
+    // Pin Assign 8 bit Configuration
+    // U0_TXD
+    // U0_RXD
     LPC_SWM->PINASSIGN0 = 0xffff0001UL;
-    /* SPI0_SCK */
+    // SPI0_SCK
     LPC_SWM->PINASSIGN3 = 0x02ffffffUL;
-    /* SPI0_MOSI */
-    /* SPI0_MISO */
-    /* SPI0_SSEL */
+    // SPI0_MOSI
+    // SPI0_MISO
+    // SPI0_SSEL
     LPC_SWM->PINASSIGN4 = 0xff050304UL;
     
     /* Pin Assign 1 bit Configuration */
@@ -84,7 +87,13 @@ void configurePins()
     
 }
 
-void awaitData(int countdown){
+/**
+ * It processing incoming data by the radio or serial connection. This function
+ * has to be continously called to keep the node running. This function also
+ * adds a delay which is specified as 100ms per unit. Therefore 1000 = 100 sec
+ * @param countdown delay added to this function
+ */
+void awaitData(int countdown) {
     
     uint8_t rx_len;
     
@@ -93,8 +102,10 @@ void awaitData(int countdown){
     
     RFM69_setMode(RFM69_MODE_RX);
     
-    while (countdown >0){
-        if(RFM69_checkRx() == 1){
+    while(countdown > 0) {
+
+    	// Check rx buffer
+        if(RFM69_checkRx() == 1) {
             RFM69_recv(data_temp,  &rx_len);
             data_temp[rx_len - 1] = '\0';
             #ifdef DEBUG
@@ -102,151 +113,201 @@ void awaitData(int countdown){
             #endif
             processData(rx_len);
         }
+
+        // Check tx buffer
+        checkTxBuffer();
+
         countdown--;
         mrtDelay(100);
     }
 }
 
+/**
+ * Checks for incoming serial data which will be send by radio. This function
+ * also checks the buffers length to avoid a stackoverflow at the radio FIFO.
+ */
+inline void checkTxBuffer(void) {
+	uint8_t i;
+
+	if(UART0_available() > 0) {
+		for(i=0; i<serialBuffer_write; i++) {
+
+			if(serialBuffer[i] == '\r' ||  serialBuffer[i] == '\n' || strlen(data_out_temp) >= 32) { // Transmit data from buffer
+
+				#ifdef DEBUG
+				if(strlen(data_out_temp) >= MAX_TX_CHARS)
+					printf("max. buffer exceeded\n\r");
+				#endif
+
+				// Transmit data
+				incrementPacketCount();
+
+				uint8_t n;
+				data_temp[0] = '\0';
+
+				n = sprintf(data_temp, "%d%c%s[%s]", NUM_REPEATS, data_count, data_out_temp, NODE_ID);
+				transmitData(n);
+
+				data_out_temp[0] = '\0'; // Flush buffer
+
+			} else {
+				sprintf(data_out_temp, "%s%c", data_out_temp, serialBuffer[i]); // Read from serial buffer
+			}
+
+		}
+		serialBuffer_write = 0;
+	}
+}
+
+/**
+ * This function is called when a packet is received by the radio. It will
+ * process the packet.
+ */
 inline void processData(uint32_t len) {
     uint8_t i, packet_len;
-    char *e;
-    char final_string[64];
     
-    e = strstr(data_temp, ']');
-    i = (int)(e - data_temp);
-    
-    if(i < 1){
-        return;
+    for(i=0; i<len; i++) {
+        if(data_temp[i] != ']')
+            continue;
+        
+        //Print the string
+        data_temp[i+1] = '\0';
+        
+        if(data_temp[0] <= '0')
+            break;
+        
+        //Reduce the repeat value
+        data_temp[0] = data_temp[0] - 1;
+        //Now add , and end line and let string functions do the rest
+        data_temp[i] = ',';
+        data_temp[i+1] = '\0';
+        
+        if(strstr(data_temp, NODE_ID) != 0)
+            break;
+        
+        
+        strcat(data_temp, NODE_ID); // Add ID
+        strcat(data_temp, "]"); // Add ending
+        
+        packet_len = strlen(data_temp);
+        mrtDelay(500); // Random delay to try and avoid packet collision
+        
+        rx_packets++;
+        //Send the data (need to include the length of the packet and power in dbmW)
+        RFM69_send(data_temp, packet_len, 10);
+
+		#ifdef DEBUG
+        	printf("tx: %s\n\r",data_temp);
+		#endif
+        
+        //Ensure we are in RX mode
+        RFM69_setMode(RFM69_MODE_RX);
+        break;
     }
+}
+
+/**
+ * Packet data transmission
+ * @param Packet length
+ */
+void transmitData(uint8_t i) {
     
-    data_temp[i+1] = '\0';
-    
-    //Check that we can still repeat
-    if(data_temp[0] <= '0')
-        return;
-    
-    //Reduce the repeat value
-    data_temp[0] = data_temp[0] - 1;
-    //Now add , and end line and let string functions do the rest
-    
-    if(strstr(data_temp, NODE_ID) != 0)
-        return;
-    
-    packet_len = sprintf(final_string, "%s,%s]", data_temp, NODE_ID);
-    
-    //random delay to try and avoid packet collision
-    mrtDelay(100);
-    
-    rx_packets++;
-    //Send the data (need to include the length of the packet and power in dbmW)
-    RFM69_send(data_temp, packet_len, power_output);
-#ifdef DEBUG
-    printf("tx: %s\n\r",data_temp);
-#endif
+    #ifdef DEBUG
+        printf("tx: %s\n\r", data_temp);
+    #endif
+
+    // Transmit the data (need to include the length of the packet and power in dbmW)
+    RFM69_send(data_temp, i, POWER_OUTPUT);
     
     //Ensure we are in RX mode
     RFM69_setMode(RFM69_MODE_RX);
 }
 
-void transmitData(uint8_t i){
-    
-    #ifdef DEBUG
-        printf("tx: %s\n\r",data_temp);
-    #endif
-    //Send the data (need to include the length of the packet and power in dbmW)
-    RFM69_send(data_temp, i, power_output); //20dbmW
-    
-    //Ensure we are in RX mode
-    RFM69_setMode(RFM69_MODE_RX);
+/**
+ * Increments packet count which is transmitted in the beginning of each
+ * packet. This function has to be called every packet which is initially
+ * transmitted by this node.
+ * Packet count is starting with 'a' and continues up to 'z', thereafter
+ * it's continuing with 'b'. 'a' is only transmitted at the very first
+ * transmission!
+ */
+void incrementPacketCount(void) {
+    data_count++;
+    // 98 = 'b' up to 122 = 'z'
+    if(data_count > 122) {
+        data_count = 98; //'b'
+    }
 }
 
 int main(void)
 {
-    /* Initialise the GPIO block */
+    // Initialise the GPIO block
     gpioInit();
     
-#ifdef GPS
-    /* Initialise the UART0 block for printf output */
-    uart0Init(9600);
-#else
-    /* Initialise the UART0 block for printf output */
-    uart0Init(115200);
-#endif
+	#ifdef GPS
+		// Initialise the UART0 block for printf output
+		uart0Init(9600);
+	#else
+		// Initialise the UART0 block for printf output
+		uart0Init(9600);
+	#endif
     
-    /* Configure the multi-rate timer for 1ms ticks */
+    // Configure the multi-rate timer for 1ms ticks
     mrtInit(__SYSTEM_CLOCK/1000);
     
-    /* Configure the switch matrix (setup pins for UART0 and SPI) */
+    // Configure the switch matrix (setup pins for UART0 and SPI)
     configurePins();
     
     RFM69_init();
-
-    #ifdef DEBUG
-        printf("Done\n\r");
-    #endif
     
     #ifdef GPS
-        int navmode = 9;
-        setupGPS();
+		int navmode = 9;
+		setupGPS();
     #endif
+
+	#ifdef DEBUG
+		printf("Node initialized\n\r");
+	#endif
     
-    while(1)
-    {
+    while(1) {
         
         #ifdef GPS
-            mrtDelay(5000);
-            navmode = gps_check_nav();
-            mrtDelay(500);
-            gps_get_position();
-            mrtDelay(500);
-            gps_check_lock();
-            mrtDelay(500);
+			mrtDelay(5000);
+			navmode = gps_check_nav();
+			mrtDelay(500);
+			gps_get_position();
+			mrtDelay(500);
+			gps_check_lock();
+			mrtDelay(500);
 
-        
-        
-            //printf("Data: %d,%d,%d,%d,%d,%d\n\r", lat, lon, alt, navmode, lock, sats);
-            //printf("Errors: %d,%d\n\r", GPSerror, serialBuffer_write);
+			//printf("Data: %d,%d,%d,%d,%d,%d\n\r", lat, lon, alt, navmode, lock, sats);
+			//printf("Errors: %d,%d\n\r", GPSerror, serialBuffer_write);
         #endif
         
-        //**** Packet Tx Count ******
-        //using a byte to keep track of transmit count
-        // its meant to roll over
-        data_count++;
-        //'a' packet is only sent on the first transmission so we need to move it along
-        // when we roll over.
-        // 98 = 'b' up to 122 = 'z'
-        if(data_count > 122){
-            data_count = 98; //'b'
-        }
+        incrementPacketCount();
         
         //Clear buffer
         data_temp[0] = '\0';
         uint8_t n;
         
-        #ifdef GPS
-            n=sprintf(data_temp, "%d%cL%d,%d,%d[%s]", NUM_REPEATS, data_count, lat, lon, alt, NODE_ID);
-        #else
-        //Read internal temperature
-        int int_temp = RFM69_readTemp();
         //Create the packet
-        
-        if (data_count == 97){
-            n=sprintf(data_temp, "%d%cL%s[%s]", NUM_REPEATS, data_count, LOCATION_STRING, NODE_ID);
-        }
-        else{
-            n=sprintf(data_temp, "%d%cT%d[%s]", NUM_REPEATS, data_count, int_temp, NODE_ID);
-        }
-        
-        //uint8_t n=sprintf(data_temp, "%c%cC%d[%s]", num_repeats, data_count, rx_packets, id);
-        //uint8_t n=sprintf(data_temp, "%c%cL%d,%d,%d,%d,%d,%d[%s]", num_repeats, data_count, lat, lon, alt, navmode, lock, sats, id);
+        #ifdef GPS
+			n = sprintf(data_temp, "%d%cL%d,%d,%d[%s]", NUM_REPEATS, data_count, lat, lon, alt, NODE_ID);
+		#else
+			int int_temp = RFM69_readTemp(); // Read transmitter temperature
+			if(data_count == 97) {
+				n = sprintf(data_temp, "%d%cL%s[%s]", NUM_REPEATS, data_count, LOCATION_STRING, NODE_ID);
+			} else {
+				n = sprintf(data_temp, "%d%cT%d[%s]", NUM_REPEATS, data_count, int_temp, NODE_ID);
+			}
+
+			//uint8_t n=sprintf(data_temp, "%c%cC%d[%s]", num_repeats, data_count, rx_packets, id);
+			//uint8_t n=sprintf(data_temp, "%c%cL%d,%d,%d,%d,%d,%d[%s]", num_repeats, data_count, lat, lon, alt, navmode, lock, sats, id);
         #endif
         
         transmitData(n);
         
-        awaitData(tx_gap);
-        
+        awaitData(TX_GAP);
     }
     
 }
-
-//

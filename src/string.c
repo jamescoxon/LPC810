@@ -47,6 +47,18 @@ char *strstr(const char *searchee, const char *lookfor)
     return (char *) NULL;
 }
 
+char *strchr(const char *s1, int i)
+{
+    const unsigned char *s = (const unsigned char *)s1;
+    unsigned char c = i;
+    
+    while (*s && *s != c)
+        s++;
+    if (*s == c)
+        return (char *)s;
+    return NULL;
+}
+
 char *strcat(char *s1, const char *s2)
 {
     char *s = s1;
