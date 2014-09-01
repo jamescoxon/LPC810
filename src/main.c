@@ -51,7 +51,7 @@
 
 //NODE SPECIFIC DETAILS - need to be changed
 #define NUM_REPEATS			5
-#define NODE_ID				"XXX"
+#define NODE_ID				"XXXX"
 #define LOCATION_STRING		"0.00,0.00"
 #define POWER_OUTPUT		20				// Output power in dbmW
 #define TX_GAP				100				// Milliseconds between tx = tx_gap * 100, therefore 1000 = 100 seconds
@@ -252,7 +252,7 @@ int main(void)
 		uart0Init(9600);
 	#else
 		// Initialise the UART0 block for printf output
-		uart0Init(9600);
+		uart0Init(115200);
 	#endif
     
     // Configure the multi-rate timer for 1ms ticks
