@@ -51,10 +51,10 @@
 
 //NODE SPECIFIC DETAILS - need to be changed
 #define NUM_REPEATS			5
-#define NODE_ID				"XXXX"
+#define NODE_ID				"XXX"
 #define LOCATION_STRING		"0.00,0.00"
 #define POWER_OUTPUT		20				// Output power in dbmW
-#define TX_GAP				100				// Milliseconds between tx = tx_gap * 100, therefore 1000 = 100 seconds
+#define TX_GAP				300				// Milliseconds between tx = tx_gap * 100, therefore 1000 = 100 seconds
 #define MAX_TX_CHARS		32				// Maximum chars which can be transmitted in a single packet
 
 char data_out_temp[MAX_TX_CHARS+1];
@@ -193,7 +193,7 @@ inline void processData(uint32_t len) {
         strcat(data_temp, "]"); // Add ending
         
         packet_len = strlen(data_temp);
-        mrtDelay(random(500)); // Random delay to try and avoid packet collision
+        mrtDelay(random_output); // Random delay to try and avoid packet collision
         
         rx_packets++;
         
@@ -240,9 +240,13 @@ int random(int max_limit){
     // Taken from http://cdsmith.wordpress.com/2011/10/10/build-your-own-simple-random-numbers/
     // and https://www.daniweb.com/software-development/c/code/216329/construct-your-own-random-number-generator
     
-    int a = 7 * random_output % 11;
+    random_output = 7 * random_output % 11;
     
-    random_output = ((a % max_limit) + 1);
+    //random_output = ((a % max_limit) + 1);
+    
+#ifdef DEBUG
+    printf("random: %d\n\r", random_output);
+#endif
     
     return random_output;
 }
@@ -268,6 +272,7 @@ int main(void)
     
     //Seed random number generator, we can use our 'unique' ID
     random_output = NODE_ID[0] + NODE_ID[1] + NODE_ID[2];
+    //printf("random: %d\n\r", random_output);
     
     RFM69_init();
     
@@ -306,11 +311,12 @@ int main(void)
 			n = sprintf(data_temp, "%d%cL%d,%d,%d[%s]", NUM_REPEATS, data_count, lat, lon, alt, NODE_ID);
 		#else
 			int int_temp = RFM69_readTemp(); // Read transmitter temperature
+            int rssi = RFM69_sampleRssi();
         
 			if(data_count == 97) {
 				n = sprintf(data_temp, "%d%cL%s[%s]", NUM_REPEATS, data_count, LOCATION_STRING, NODE_ID);
 			} else {
-				n = sprintf(data_temp, "%d%cT%d[%s]", NUM_REPEATS, data_count, int_temp, NODE_ID);
+				n = sprintf(data_temp, "%d%cT%dR%d[%s]", NUM_REPEATS, data_count, int_temp, rssi, NODE_ID);
 			}
 
 			//uint8_t n=sprintf(data_temp, "%c%cC%d[%s]", num_repeats, data_count, rx_packets, id);

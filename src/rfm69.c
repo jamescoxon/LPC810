@@ -195,7 +195,6 @@ int RFM69_readTemp()
     return temperature;
 }
 
-/*
 int16_t RFM69_lastRssi() {
     return _lastRssi;
 }
@@ -214,4 +213,3 @@ int16_t RFM69_sampleRssi() {
     _lastRssi = -(spiRead(RFM69_REG_24_RSSI_VALUE)/2);
     return _lastRssi;
 }
-*/
