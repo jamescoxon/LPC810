@@ -196,15 +196,8 @@ inline void processData(uint32_t len) {
         mrtDelay(500); // Random delay to try and avoid packet collision
         
         rx_packets++;
-        //Send the data (need to include the length of the packet and power in dbmW)
-        RFM69_send(data_temp, packet_len, 10);
-
-		#ifdef DEBUG
-        	printf("tx: %s\n\r",data_temp);
-		#endif
         
-        //Ensure we are in RX mode
-        RFM69_setMode(RFM69_MODE_RX);
+        transmitData(packet_len);
         break;
     }
 }
