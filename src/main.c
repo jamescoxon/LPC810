@@ -62,7 +62,7 @@ char data_temp[64];
 
 uint8_t data_count = 96; // 'a' - 1 (as the first function will at 1 to make it 'a'
 						 // attempt to overcome issue of problem with first packet
-int rx_packets = 0;
+int rx_packets = 0, random_output = 0;
 
 /**
  * Setup all pins in the switch matrix of the LPC810
@@ -193,7 +193,7 @@ inline void processData(uint32_t len) {
         strcat(data_temp, "]"); // Add ending
         
         packet_len = strlen(data_temp);
-        mrtDelay(500); // Random delay to try and avoid packet collision
+        mrtDelay(random(500)); // Random delay to try and avoid packet collision
         
         rx_packets++;
         
@@ -235,6 +235,18 @@ void incrementPacketCount(void) {
     }
 }
 
+int random(int max_limit){
+    //There does not appear to be a random number generator in LPC810 so we'll make our own
+    // Taken from http://cdsmith.wordpress.com/2011/10/10/build-your-own-simple-random-numbers/
+    // and https://www.daniweb.com/software-development/c/code/216329/construct-your-own-random-number-generator
+    
+    int a = 7 * random_output % 11;
+    
+    random_output = ((a % max_limit) + 1);
+    
+    return random_output;
+}
+
 int main(void)
 {
     // Initialise the GPIO block
@@ -253,6 +265,9 @@ int main(void)
     
     // Configure the switch matrix (setup pins for UART0 and SPI)
     configurePins();
+    
+    //Seed random number generator, we can use our 'unique' ID
+    random_output = NODE_ID[0] + NODE_ID[1] + NODE_ID[2];
     
     RFM69_init();
     
