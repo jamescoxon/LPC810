@@ -62,7 +62,7 @@ char data_temp[64];
 
 uint8_t data_count = 96; // 'a' - 1 (as the first function will at 1 to make it 'a'
 						 // attempt to overcome issue of problem with first packet
-int rx_packets = 0, random_output = 0;
+int rx_packets = 0, random_output = 0, rssi;
 
 /**
  * Setup all pins in the switch matrix of the LPC810
@@ -110,6 +110,8 @@ void awaitData(int countdown) {
             data_temp[rx_len - 1] = '\0';
             #ifdef DEBUG
                 printf("rx: %s\r\n",data_temp);
+                rssi = RFM69_sampleRssi();
+                printf("RSSI: %d\r\n", rssi);
             #endif
             processData(rx_len);
         }
@@ -295,7 +297,7 @@ int main(void)
 			n = sprintf(data_temp, "%d%cL%d,%d,%d[%s]", NUM_REPEATS, data_count, lat, lon, alt, NODE_ID);
 		#else
 			int int_temp = RFM69_readTemp(); // Read transmitter temperature
-            int rssi = RFM69_sampleRssi();
+            rssi = RFM69_sampleRssi();
         
 			if(data_count == 97) {
 				n = sprintf(data_temp, "%d%cL%s[%s]", NUM_REPEATS, data_count, LOCATION_STRING, NODE_ID);
