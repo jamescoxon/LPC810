@@ -109,7 +109,7 @@ void awaitData(int countdown) {
             RFM69_recv(data_temp,  &rx_len);
             data_temp[rx_len - 1] = '\0';
             #ifdef DEBUG
-                printf("rx: %s\n\r",data_temp);
+                printf("rx: %s\r\n",data_temp);
             #endif
             processData(rx_len);
         }
@@ -139,7 +139,7 @@ inline void checkTxBuffer(void) {
 
 				#ifdef DEBUG
 				if(strlen(data_out_temp) >= MAX_TX_CHARS)
-					printf("max. buffer exceeded\n\r");
+					printf("max. buffer exceeded\r\n");
 				#endif
 
 				// Transmit data
@@ -209,7 +209,7 @@ inline void processData(uint32_t len) {
 void transmitData(uint8_t i) {
     
     #ifdef DEBUG
-        printf("tx: %s\n\r", data_temp);
+        printf("tx: %s\r\n", data_temp);
     #endif
 
     // Transmit the data (need to include the length of the packet and power in dbmW)
@@ -235,22 +235,6 @@ void incrementPacketCount(void) {
     }
 }
 
-int random(int max_limit){
-    //There does not appear to be a random number generator in LPC810 so we'll make our own
-    // Taken from http://cdsmith.wordpress.com/2011/10/10/build-your-own-simple-random-numbers/
-    // and https://www.daniweb.com/software-development/c/code/216329/construct-your-own-random-number-generator
-    
-    random_output = 7 * random_output % 11;
-    
-    //random_output = ((a % max_limit) + 1);
-    
-#ifdef DEBUG
-    printf("random: %d\n\r", random_output);
-#endif
-    
-    return random_output;
-}
-
 int main(void)
 {
     // Initialise the GPIO block
@@ -272,7 +256,7 @@ int main(void)
     
     //Seed random number generator, we can use our 'unique' ID
     random_output = NODE_ID[0] + NODE_ID[1] + NODE_ID[2];
-    //printf("random: %d\n\r", random_output);
+    //printf("random: %d\r\n", random_output);
     
     RFM69_init();
     
@@ -282,7 +266,7 @@ int main(void)
     #endif
 
 	#ifdef DEBUG
-		printf("Node initialized\n\r");
+		printf("Node initialized\r\n");
 	#endif
     
     while(1) {
@@ -296,8 +280,8 @@ int main(void)
 			gps_check_lock();
 			mrtDelay(500);
 
-			//printf("Data: %d,%d,%d,%d,%d,%d\n\r", lat, lon, alt, navmode, lock, sats);
-			//printf("Errors: %d,%d\n\r", GPSerror, serialBuffer_write);
+			//printf("Data: %d,%d,%d,%d,%d,%d\r\n", lat, lon, alt, navmode, lock, sats);
+			//printf("Errors: %d,%d\r\n", GPSerror, serialBuffer_write);
         #endif
         
         incrementPacketCount();
