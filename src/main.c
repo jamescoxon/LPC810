@@ -38,6 +38,8 @@
 // Comment out if you don't want GPS (ublox binary)
 //#define GPS
 
+//#define SERIAL_IN
+
 #include <stdio.h>
 #include "LPC8xx.h"
 #include "mrt.h"
@@ -51,18 +53,22 @@
 
 //NODE SPECIFIC DETAILS - need to be changed
 #define NUM_REPEATS			5
-#define NODE_ID				"XXX"
+#define NODE_ID				"AH1"
 #define LOCATION_STRING		"0.00,0.00"
 #define POWER_OUTPUT		20				// Output power in dbmW
 #define TX_GAP				300				// Milliseconds between tx = tx_gap * 100, therefore 1000 = 100 seconds
 #define MAX_TX_CHARS		32				// Maximum chars which can be transmitted in a single packet
 
+#ifdef SERIAL_IN
 char data_out_temp[MAX_TX_CHARS+1];
+#endif
+
 char data_temp[64];
 
 uint8_t data_count = 96; // 'a' - 1 (as the first function will at 1 to make it 'a'
 						 // attempt to overcome issue of problem with first packet
-int rx_packets = 0, random_output = 0, rssi;
+int rx_packets = 0, random_output = 0;
+int16_t rssi, rx_rssi;
 
 /**
  * Setup all pins in the switch matrix of the LPC810
@@ -109,14 +115,14 @@ void awaitData(int countdown) {
             RFM69_recv(data_temp,  &rx_len);
             data_temp[rx_len - 1] = '\0';
             #ifdef DEBUG
+                rssi = RFM69_lastRssi();
                 printf("rx: %s\r\n",data_temp);
-                rssi = RFM69_sampleRssi();
-                printf("RSSI: %d\r\n", rssi);
+                //printf("RSSI: %d\r\n, rssi");
             #endif
             processData(rx_len);
         }
 
-        #ifndef GPS
+        #ifdef SERIAL_IN
                 // Check tx buffer
                 checkTxBuffer();
         #endif
@@ -126,7 +132,7 @@ void awaitData(int countdown) {
     }
 }
 
-#ifndef GPS
+#ifdef SERIAL_IN
 /**
  * Checks for incoming serial data which will be send by radio. This function
  * also checks the buffers length to avoid a stackoverflow at the radio FIFO.
@@ -297,12 +303,12 @@ int main(void)
 			n = sprintf(data_temp, "%d%cL%d,%d,%d[%s]", NUM_REPEATS, data_count, lat, lon, alt, NODE_ID);
 		#else
 			int int_temp = RFM69_readTemp(); // Read transmitter temperature
-            rssi = RFM69_sampleRssi();
+            rx_rssi = RFM69_lastRssi();
         
 			if(data_count == 97) {
 				n = sprintf(data_temp, "%d%cL%s[%s]", NUM_REPEATS, data_count, LOCATION_STRING, NODE_ID);
 			} else {
-				n = sprintf(data_temp, "%d%cT%dR%d[%s]", NUM_REPEATS, data_count, int_temp, rssi, NODE_ID);
+				n = sprintf(data_temp, "%d%cT%dR%d[%s]", NUM_REPEATS, data_count, int_temp, rx_rssi, NODE_ID);
 			}
 
 			//uint8_t n=sprintf(data_temp, "%c%cC%d[%s]", num_repeats, data_count, rx_packets, id);
