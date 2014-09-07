@@ -38,6 +38,8 @@
 // Comment out if you don't want GPS (ublox binary)
 //#define GPS
 
+//#define SERIAL_IN
+
 #include <stdio.h>
 #include "LPC8xx.h"
 #include "mrt.h"
@@ -51,18 +53,22 @@
 
 //NODE SPECIFIC DETAILS - need to be changed
 #define NUM_REPEATS			5
-#define NODE_ID				"LDS"
-#define LOCATION_STRING		"52.316,13.62"
+#define NODE_ID				"AH1"
+#define LOCATION_STRING		"0.00,0.00"
 #define POWER_OUTPUT		20				// Output power in dbmW
-#define TX_GAP				100				// Milliseconds between tx = tx_gap * 100, therefore 1000 = 100 seconds
+#define TX_GAP				300				// Milliseconds between tx = tx_gap * 100, therefore 1000 = 100 seconds
 #define MAX_TX_CHARS		32				// Maximum chars which can be transmitted in a single packet
 
+#ifdef SERIAL_IN
 char data_out_temp[MAX_TX_CHARS+1];
+#endif
+
 char data_temp[64];
 
 uint8_t data_count = 96; // 'a' - 1 (as the first function will at 1 to make it 'a'
 						 // attempt to overcome issue of problem with first packet
-int rx_packets = 0;
+int rx_packets = 0, random_output = 0;
+int16_t rssi, rx_rssi;
 
 /**
  * Setup all pins in the switch matrix of the LPC810
@@ -109,12 +115,14 @@ void awaitData(int countdown) {
             RFM69_recv(data_temp,  &rx_len);
             data_temp[rx_len - 1] = '\0';
             #ifdef DEBUG
-                printf("rx: %s\n\r",data_temp);
+                rssi = RFM69_lastRssi();
+                printf("rx: %s\r\n",data_temp);
+                //printf("RSSI: %d\r\n, rssi");
             #endif
             processData(rx_len);
         }
 
-        #ifndef GPS
+        #ifdef SERIAL_IN
                 // Check tx buffer
                 checkTxBuffer();
         #endif
@@ -124,7 +132,7 @@ void awaitData(int countdown) {
     }
 }
 
-#ifndef GPS
+#ifdef SERIAL_IN
 /**
  * Checks for incoming serial data which will be send by radio. This function
  * also checks the buffers length to avoid a stackoverflow at the radio FIFO.
@@ -139,7 +147,7 @@ inline void checkTxBuffer(void) {
 
 				#ifdef DEBUG
 				if(strlen(data_out_temp) >= MAX_TX_CHARS)
-					printf("max. buffer exceeded\n\r");
+					printf("max. buffer exceeded\r\n");
 				#endif
 
 				// Transmit data
@@ -193,18 +201,11 @@ inline void processData(uint32_t len) {
         strcat(data_temp, "]"); // Add ending
         
         packet_len = strlen(data_temp);
-        mrtDelay(500); // Random delay to try and avoid packet collision
+        mrtDelay(random_output); // Random delay to try and avoid packet collision
         
         rx_packets++;
-        //Send the data (need to include the length of the packet and power in dbmW)
-        RFM69_send(data_temp, packet_len, 10);
-
-		#ifdef DEBUG
-        	printf("tx: %s\n\r",data_temp);
-		#endif
         
-        //Ensure we are in RX mode
-        RFM69_setMode(RFM69_MODE_RX);
+        transmitData(packet_len);
         break;
     }
 }
@@ -216,7 +217,7 @@ inline void processData(uint32_t len) {
 void transmitData(uint8_t i) {
     
     #ifdef DEBUG
-        printf("tx: %s\n\r", data_temp);
+        printf("tx: %s\r\n", data_temp);
     #endif
 
     // Transmit the data (need to include the length of the packet and power in dbmW)
@@ -252,7 +253,7 @@ int main(void)
 		uart0Init(9600);
 	#else
 		// Initialise the UART0 block for printf output
-		uart0Init(9600);
+		uart0Init(115200);
 	#endif
     
     // Configure the multi-rate timer for 1ms ticks
@@ -260,6 +261,10 @@ int main(void)
     
     // Configure the switch matrix (setup pins for UART0 and SPI)
     configurePins();
+    
+    //Seed random number generator, we can use our 'unique' ID
+    random_output = NODE_ID[0] + NODE_ID[1] + NODE_ID[2];
+    //printf("random: %d\r\n", random_output);
     
     RFM69_init();
     
@@ -269,7 +274,7 @@ int main(void)
     #endif
 
 	#ifdef DEBUG
-		printf("Node initialized\n\r");
+		printf("Node initialized\r\n");
 	#endif
     
     while(1) {
@@ -283,8 +288,8 @@ int main(void)
 			gps_check_lock();
 			mrtDelay(500);
 
-			//printf("Data: %d,%d,%d,%d,%d,%d\n\r", lat, lon, alt, navmode, lock, sats);
-			//printf("Errors: %d,%d\n\r", GPSerror, serialBuffer_write);
+			//printf("Data: %d,%d,%d,%d,%d,%d\r\n", lat, lon, alt, navmode, lock, sats);
+			//printf("Errors: %d,%d\r\n", GPSerror, serialBuffer_write);
         #endif
         
         incrementPacketCount();
@@ -298,11 +303,12 @@ int main(void)
 			n = sprintf(data_temp, "%d%cL%d,%d,%d[%s]", NUM_REPEATS, data_count, lat, lon, alt, NODE_ID);
 		#else
 			int int_temp = RFM69_readTemp(); // Read transmitter temperature
+            rx_rssi = RFM69_lastRssi();
         
 			if(data_count == 97) {
 				n = sprintf(data_temp, "%d%cL%s[%s]", NUM_REPEATS, data_count, LOCATION_STRING, NODE_ID);
 			} else {
-				n = sprintf(data_temp, "%d%cT%d[%s]", NUM_REPEATS, data_count, int_temp, NODE_ID);
+				n = sprintf(data_temp, "%d%cT%dR%d[%s]", NUM_REPEATS, data_count, int_temp, rx_rssi, NODE_ID);
 			}
 
 			//uint8_t n=sprintf(data_temp, "%c%cC%d[%s]", num_repeats, data_count, rx_packets, id);
