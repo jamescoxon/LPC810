@@ -273,7 +273,7 @@ int main(void)
     #endif
 
 	#ifdef DEBUG
-		printf("Node initialized\r\n");
+		printf("Node initialized, version %s\r\n",GIT_VER);
 	#endif
     
     while(1) {

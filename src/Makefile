@@ -32,6 +32,9 @@ LDFLAGS += --gc-sections
 INC += -I../cmsis
 CFLAGS += $(INC) -D__USE_CMSIS # -DCLOCK_SETUP=1
 
+GIT_VER:= $(shell git describe --always --dirty=+)
+CFLAGS += -DGIT_VER="\"${GIT_VER}\""
+
 UKHASNET_OBJS = main.o \
                 gpio.o \
                 uart.o \
@@ -46,6 +49,13 @@ UKHASNET_OBJS = main.o \
                 gcc_startup_lpc8xx.o
 
 all: $(FILENAME).bin
+
+main.o: gitversion
+gitversion: FORCE
+	[ -f $@ ] || touch $@
+	echo $(GIT_VER) | cmp -s $@ - || echo $(GIT_VER) > $@
+
+FORCE:
 
 ukhasnet.axf: $(FILENAME).ld $(UKHASNET_OBJS)
 	@$(LD) -o $@ $(LDFLAGS) -T $(LINKERSCRIPT) $(UKHASNET_OBJS) $(LIBGCC)
