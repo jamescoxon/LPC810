@@ -32,6 +32,9 @@ LDFLAGS += --gc-sections
 INC += -I../cmsis
 CFLAGS += $(INC) -D__USE_CMSIS # -DCLOCK_SETUP=1
 
+GIT_VER:= $(shell git describe --always --dirty=+)
+CFLAGS += -DGIT_VER="\"${GIT_VER}\""
+
 UKHASNET_OBJS = main.o \
                 gpio.o \
                 uart.o \
