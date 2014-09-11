@@ -33,7 +33,7 @@
  */
 /**************************************************************************/
 // Comment out if you don't want printing to serial (if isolated node)
-#define DEBUG
+//#define DEBUG
 
 // Comment out if you don't want GPS (ublox binary)
 //#define GPS
@@ -53,8 +53,8 @@
 
 //NODE SPECIFIC DETAILS - need to be changed
 #define NUM_REPEATS			5
-#define NODE_ID				"AH1"
-#define LOCATION_STRING		"0.00,0.00"
+#define NODE_ID				"XXX"
+#define LOCATION_STRING		"xx.xxx,xx.xxx"
 #define POWER_OUTPUT		20				// Output power in dbmW
 #define TX_GAP				300				// Milliseconds between tx = tx_gap * 100, therefore 1000 = 100 seconds
 #define MAX_TX_CHARS		32				// Maximum chars which can be transmitted in a single packet
@@ -66,9 +66,8 @@ char data_out_temp[MAX_TX_CHARS+1];
 char data_temp[64];
 
 uint8_t data_count = 96; // 'a' - 1 (as the first function will at 1 to make it 'a'
-						 // attempt to overcome issue of problem with first packet
-int rx_packets = 0, random_output = 0;
-int16_t rssi, rx_rssi;
+unsigned int rx_packets = 0, random_output = 0;
+int16_t rx_rssi, floor_rssi;
 
 /**
  * Setup all pins in the switch matrix of the LPC810
@@ -115,7 +114,7 @@ void awaitData(int countdown) {
             RFM69_recv(data_temp,  &rx_len);
             data_temp[rx_len - 1] = '\0';
             #ifdef DEBUG
-                rssi = RFM69_lastRssi();
+                //rssi = RFM69_lastRssi();
                 printf("rx: %s\r\n",data_temp);
                 //printf("RSSI: %d\r\n, rssi");
             #endif
@@ -282,6 +281,10 @@ int main(void)
         #ifdef GPS
 			mrtDelay(5000);
 			navmode = gps_check_nav();
+            if (navmode != 6){
+                setupGPS();
+            }
+        
 			mrtDelay(500);
 			gps_get_position();
 			mrtDelay(500);
@@ -299,20 +302,18 @@ int main(void)
         uint8_t n;
         
         //Create the packet
-        #ifdef GPS
-			n = sprintf(data_temp, "%d%cL%d,%d,%d[%s]", NUM_REPEATS, data_count, lat, lon, alt, NODE_ID);
-		#else
-			int int_temp = RFM69_readTemp(); // Read transmitter temperature
-            rx_rssi = RFM69_lastRssi();
+        int int_temp = RFM69_readTemp(); // Read transmitter temperature
+        rx_rssi = RFM69_lastRssi();
+        floor_rssi = RFM69_sampleRssi();
         
+        #ifdef GPS
+			n = sprintf(data_temp, "%d%cL%d,%d,%dT%dR%d[%s]", NUM_REPEATS, data_count, lat, lon, alt, int_temp, rx_rssi, NODE_ID);
+		#else
 			if(data_count == 97) {
 				n = sprintf(data_temp, "%d%cL%s[%s]", NUM_REPEATS, data_count, LOCATION_STRING, NODE_ID);
 			} else {
-				n = sprintf(data_temp, "%d%cT%dR%d[%s]", NUM_REPEATS, data_count, int_temp, rx_rssi, NODE_ID);
+				n = sprintf(data_temp, "%d%cT%dR%d,%dC%d[%s]", NUM_REPEATS, data_count, int_temp, rx_rssi, floor_rssi, rx_packets, NODE_ID);
 			}
-
-			//uint8_t n=sprintf(data_temp, "%c%cC%d[%s]", num_repeats, data_count, rx_packets, id);
-			//uint8_t n=sprintf(data_temp, "%c%cL%d,%d,%d,%d,%d,%d[%s]", num_repeats, data_count, lat, lon, alt, navmode, lock, sats, id);
         #endif
         
         transmitData(n);
