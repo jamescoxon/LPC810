@@ -50,6 +50,13 @@ UKHASNET_OBJS = main.o \
 
 all: $(FILENAME).bin
 
+main.o: gitversion
+gitversion: FORCE
+	[ -f $@ ] || touch $@
+	echo $(GIT_VER) | cmp -s $@ - || echo $(GIT_VER) > $@
+
+FORCE:
+
 ukhasnet.axf: $(FILENAME).ld $(UKHASNET_OBJS)
 	@$(LD) -o $@ $(LDFLAGS) -T $(LINKERSCRIPT) $(UKHASNET_OBJS) $(LIBGCC)
 	-@echo ""
