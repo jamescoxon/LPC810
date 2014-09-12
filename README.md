@@ -7,6 +7,8 @@ Adapted from LPC810_CodeBase
 * Stripped down version of string library
 * Included memcpy
 
+Please remember to edit src/main.c and add your own node ID and location string.
+
 
 LPC810_CodeBase
 ===============
