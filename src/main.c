@@ -33,12 +33,14 @@
  */
 /**************************************************************************/
 // Comment out if you don't want printing to serial (if isolated node)
-//#define DEBUG
+#define DEBUG
 
 // Comment out if you don't want GPS (ublox binary)
 //#define GPS
 
 //#define SERIAL_IN
+
+#define ADC
 
 #include <stdio.h>
 #include "LPC8xx.h"
@@ -49,6 +51,10 @@
 
 #ifdef GPS
     #include "gps.h"
+#endif
+
+#ifdef GPS
+    #include "adc.h"
 #endif
 
 //NODE SPECIFIC DETAILS - need to be changed
@@ -77,9 +83,15 @@ void configurePins() {
     LPC_SYSCON->SYSAHBCLKCTRL |= (1<<7);
     
     // Pin Assign 8 bit Configuration
+#ifdef ADC
+    // U0_RXD
+    // ACMP_I2
+    LPC_SWM->PINASSIGN0 = 0xffff00ffUL;
+#else
     // U0_TXD
     // U0_RXD
     LPC_SWM->PINASSIGN0 = 0xffff0001UL;
+#endif
     // SPI0_SCK
     LPC_SWM->PINASSIGN3 = 0x02ffffffUL;
     // SPI0_MOSI
@@ -113,18 +125,18 @@ void awaitData(int countdown) {
         if(RFM69_checkRx() == 1) {
             RFM69_recv(data_temp,  &rx_len);
             data_temp[rx_len - 1] = '\0';
-            #ifdef DEBUG
+#ifdef DEBUG
                 //rssi = RFM69_lastRssi();
                 printf("rx: %s\r\n",data_temp);
                 //printf("RSSI: %d\r\n, rssi");
-            #endif
+#endif
             processData(rx_len);
         }
 
-        #ifdef SERIAL_IN
+#ifdef SERIAL_IN
                 // Check tx buffer
                 checkTxBuffer();
-        #endif
+#endif
 
         countdown--;
         mrtDelay(100);
@@ -247,13 +259,13 @@ int main(void)
     // Initialise the GPIO block
     gpioInit();
     
-	#ifdef GPS
+#ifdef GPS
 		// Initialise the UART0 block for printf output
 		uart0Init(9600);
-	#else
+#else
 		// Initialise the UART0 block for printf output
 		uart0Init(115200);
-	#endif
+#endif
     
     // Configure the multi-rate timer for 1ms ticks
     mrtInit(__SYSTEM_CLOCK/1000);
@@ -261,24 +273,29 @@ int main(void)
     // Configure the switch matrix (setup pins for UART0 and SPI)
     configurePins();
     
+#ifdef ADC
+    /* Initialise the comparator ICMP_2 */
+    LPC_SYSCON->PDRUNCFG &= ~((1 << 15)); // power up ACMP
+#endif
+    
     //Seed random number generator, we can use our 'unique' ID
     random_output = NODE_ID[0] + NODE_ID[1] + NODE_ID[2];
     //printf("random: %d\r\n", random_output);
     
     RFM69_init();
     
-    #ifdef GPS
+#ifdef GPS
 		int navmode = 9;
 		setupGPS();
-    #endif
+#endif
 
-	#ifdef DEBUG
+#ifdef DEBUG
 		printf("Node initialized, version %s\r\n",GIT_VER);
-	#endif
+#endif
     
     while(1) {
         
-        #ifdef GPS
+#ifdef GPS
 			mrtDelay(5000);
 			navmode = gps_check_nav();
             if (navmode != 6){
@@ -293,7 +310,7 @@ int main(void)
 
 			//printf("Data: %d,%d,%d,%d,%d,%d\r\n", lat, lon, alt, navmode, lock, sats);
 			//printf("Errors: %d,%d\r\n", GPSerror, serialBuffer_write);
-        #endif
+#endif
         
         incrementPacketCount();
         
@@ -306,15 +323,20 @@ int main(void)
         rx_rssi = RFM69_lastRssi();
         floor_rssi = RFM69_sampleRssi();
         
-        #ifdef GPS
+#ifdef ADC
+        //Read ADC
+        int adc_result = read_adc2();
+#endif
+        
+#ifdef GPS
 			n = sprintf(data_temp, "%d%cL%d,%d,%dT%dR%d[%s]", NUM_REPEATS, data_count, lat, lon, alt, int_temp, rx_rssi, NODE_ID);
-		#else
+#else
 			if(data_count == 97) {
 				n = sprintf(data_temp, "%d%cL%s[%s]", NUM_REPEATS, data_count, LOCATION_STRING, NODE_ID);
 			} else {
 				n = sprintf(data_temp, "%d%cT%dR%d,%dC%d[%s]", NUM_REPEATS, data_count, int_temp, rx_rssi, floor_rssi, rx_packets, NODE_ID);
 			}
-        #endif
+#endif
         
         transmitData(n);
         
