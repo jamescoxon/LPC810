@@ -33,7 +33,7 @@
  */
 /**************************************************************************/
 // Comment out if you don't want printing to serial (if isolated node)
-//#define DEBUG
+#define DEBUG
 
 // Comment out if you don't want GPS (ublox binary)
 //#define GPS
