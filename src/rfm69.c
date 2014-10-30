@@ -180,11 +180,11 @@ int RFM69_readTemp()
     // Trigger Temperature Measurement
     spiWrite(RFM69_REG_4E_TEMP1, RF_TEMP1_MEAS_START);
     // Check Temperature Measurement has started
-    if(!(RF_TEMP1_MEAS_RUNNING && spiRead(RFM69_REG_4E_TEMP1))){
+    if(!(RF_TEMP1_MEAS_RUNNING & spiRead(RFM69_REG_4E_TEMP1))){
         return 255;
     }
     // Wait for Measurement to complete
-    while(RF_TEMP1_MEAS_RUNNING && spiRead(RFM69_REG_4E_TEMP1)) { };
+    while(RF_TEMP1_MEAS_RUNNING & spiRead(RFM69_REG_4E_TEMP1)) { };
     // Read raw ADC value
     uint8_t rawTemp = spiRead(RFM69_REG_4F_TEMP2);
 	
@@ -208,8 +208,8 @@ int16_t RFM69_sampleRssi() {
     // Trigger RSSI Measurement
     spiWrite(RFM69_REG_23_RSSI_CONFIG, RF_RSSI_START);
     // Wait for Measurement to complete
-    while(!(RF_RSSI_DONE && spiRead(RFM69_REG_23_RSSI_CONFIG))) { };
     // Read, store in _lastRssi and return RSSI Value
     _lastRssi = -(spiRead(RFM69_REG_24_RSSI_VALUE)/2);
     return _lastRssi;
+    while(!(RF_RSSI_DONE & spiRead(RFM69_REG_23_RSSI_CONFIG))) { };
 }
