@@ -200,6 +200,7 @@ int16_t RFM69_lastRssi() {
 }
 
 int16_t RFM69_sampleRssi() {
+    int count = 0;
     uint8_t rssi;
 
     // Must only be called in RX mode
@@ -212,7 +213,13 @@ int16_t RFM69_sampleRssi() {
     // Trigger RSSI Measurement
     spiWrite(RFM69_REG_23_RSSI_CONFIG, RF_RSSI_START);
     // Wait for Measurement to complete
-    while(!(RF_RSSI_DONE & spiRead(RFM69_REG_23_RSSI_CONFIG))) { };
+    while(!(RF_RSSI_DONE & spiRead(RFM69_REG_23_RSSI_CONFIG))) {
+        // there is a small chance the measurement may not complete
+        // so this avoids waiting forever
+        if (count++ > 1000) {
+            return 1;
+        }
+    }
     // Read RSSI value
     rssi = spiRead(RFM69_REG_24_RSSI_VALUE);
     // Set threshold 4dB above noise floor
