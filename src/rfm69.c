@@ -200,16 +200,25 @@ int16_t RFM69_lastRssi() {
 }
 
 int16_t RFM69_sampleRssi() {
+    uint8_t rssi;
+
     // Must only be called in RX mode
     if(_mode!=RFM69_MODE_RX) {
         // Not sure what happens otherwise, so check this
         return 0;
     }
+    // Set threshold to minimum signal
+    spiWrite(RFM69_REG_29_RSSI_THRESHOLD, 0xff);
     // Trigger RSSI Measurement
     spiWrite(RFM69_REG_23_RSSI_CONFIG, RF_RSSI_START);
     // Wait for Measurement to complete
-    // Read, store in _lastRssi and return RSSI Value
-    _lastRssi = -(spiRead(RFM69_REG_24_RSSI_VALUE)/2);
-    return _lastRssi;
     while(!(RF_RSSI_DONE & spiRead(RFM69_REG_23_RSSI_CONFIG))) { };
+    // Read RSSI value
+    rssi = spiRead(RFM69_REG_24_RSSI_VALUE);
+    // Set threshold 4dB above noise floor
+    spiWrite(RFM69_REG_29_RSSI_THRESHOLD, rssi - 8);
+    // Restart reception with new threshold
+    spiWrite(RFM69_REG_3D_PACKET_CONFIG2, spiRead(RFM69_REG_3D_PACKET_CONFIG2) | RF_PACKET2_RXRESTART);
+    // Return RSSI Value
+    return -(rssi/2);
 }
