@@ -66,8 +66,8 @@ char data_out_temp[MAX_TX_CHARS+1];
 char data_temp[64];
 
 uint8_t data_count = 96; // 'a' - 1 (as the first function will at 1 to make it 'a'
-unsigned int rx_packets = 0, random_output = 0;
-int16_t rx_rssi, floor_rssi;
+unsigned int rx_packets = 0, random_output = 0, rx_restarts = 0;
+int16_t rx_rssi, floor_rssi, rssi_threshold;
 
 /**
  * Setup all pins in the switch matrix of the LPC810
@@ -195,15 +195,39 @@ inline void processData(uint32_t len) {
  */
 void awaitData(int countdown) {
 
-    uint8_t rx_len;
+    uint8_t rx_len, flags1, old_flags1 = 0x90, err_count = 0;
 
     //Clear buffer
     data_temp[0] = '\0';
 
     RFM69_setMode(RFM69_MODE_RX);
 
+    rx_restarts = 0;
+
     while(countdown > 0) {
 
+        flags1 = spiRead(RFM69_REG_27_IRQ_FLAGS1);
+#ifdef DEBUG
+        if (flags1 != old_flags1) {
+            printf("f1: %02x\r\n", flags1);
+            old_flags1 = flags1;
+        }
+#endif
+        if (flags1 == 0xd8) {
+            if (err_count++ > 3) {
+                // restart the Rx process
+                spiWrite(RFM69_REG_3D_PACKET_CONFIG2, spiRead(RFM69_REG_3D_PACKET_CONFIG2) | RF_PACKET2_RXRESTART);
+                rx_restarts++;
+                // reset the RSSI threshold
+                floor_rssi = RFM69_sampleRssi();
+#ifdef DEBUG
+                // and print noise floor
+                printf("Restart Rx %d\r\n", floor_rssi);
+#endif
+            }
+        } else {
+            err_count = 0;
+        }
         // Check rx buffer
         if(RFM69_checkRx() == 1) {
             RFM69_recv(data_temp,  &rx_len);
@@ -302,6 +326,8 @@ int main(void)
         //Create the packet
         int int_temp = RFM69_readTemp(); // Read transmitter temperature
         rx_rssi = RFM69_lastRssi();
+        // read the rssi threshold before re-sampling noise floor which will change it
+        rssi_threshold = RFM69_lastRssiThreshold();
         floor_rssi = RFM69_sampleRssi();
         
         #ifdef GPS
@@ -310,7 +336,7 @@ int main(void)
 			if(data_count == 97) {
 				n = sprintf(data_temp, "%d%cL%s[%s]", NUM_REPEATS, data_count, LOCATION_STRING, NODE_ID);
 			} else {
-				n = sprintf(data_temp, "%d%cT%dR%d,%dC%d[%s]", NUM_REPEATS, data_count, int_temp, rx_rssi, floor_rssi, rx_packets, NODE_ID);
+				n = sprintf(data_temp, "%d%cT%dR%d,%dC%dX%d,%d[%s]", NUM_REPEATS, data_count, int_temp, rx_rssi, floor_rssi, rx_packets, rx_restarts, rssi_threshold, NODE_ID);
 			}
         #endif
         
