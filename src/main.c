@@ -209,9 +209,7 @@ void awaitData(int countdown) {
             RFM69_recv(data_temp,  &rx_len);
             data_temp[rx_len - 1] = '\0';
             #ifdef DEBUG
-                //rssi = RFM69_lastRssi();
-                printf("rx: %s\r\n",data_temp);
-                //printf("RSSI: %d\r\n, rssi");
+                printf("rx: %s|%d\r\n",data_temp, RFM69_lastRssi());
             #endif
             processData(rx_len);
         }
