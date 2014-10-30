@@ -223,9 +223,15 @@ int16_t RFM69_sampleRssi() {
     // Read RSSI value
     rssi = spiRead(RFM69_REG_24_RSSI_VALUE);
     // Set threshold 4dB above noise floor
-    spiWrite(RFM69_REG_29_RSSI_THRESHOLD, rssi - 8);
+    _rssi_threshold = rssi - 8;
+    spiWrite(RFM69_REG_29_RSSI_THRESHOLD, _rssi_threshold);
     // Restart reception with new threshold
     spiWrite(RFM69_REG_3D_PACKET_CONFIG2, spiRead(RFM69_REG_3D_PACKET_CONFIG2) | RF_PACKET2_RXRESTART);
     // Return RSSI Value
     return -(rssi/2);
 }
+
+int16_t RFM69_lastRssiThreshold() {
+    return -(_rssi_threshold/2);
+}
+

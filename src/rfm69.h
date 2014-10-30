@@ -766,6 +766,7 @@ volatile uint8_t    _rxBufValid;
 float               _temperatureFudge;
 
 int16_t                 _lastRssi;
+int16_t                 _rssi_threshold;
 
 /*
 class RFM69
