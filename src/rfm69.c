@@ -24,6 +24,12 @@ void* memcpy(void* dest, const void* src, size_t count) {
     return dest;
 }
 
+void RFM69_setMode(uint8_t newMode)
+{
+    spiWrite(RFM69_REG_01_OPMODE, (spiRead(RFM69_REG_01_OPMODE) & 0xE3) | newMode);
+    _mode = newMode;
+}
+
 uint8_t RFM69_init()
 {
     mrtDelay(12);
@@ -66,15 +72,17 @@ void RFM69_spiFifoWrite(const uint8_t* src, int len)
         i++;
     }
 }
-void RFM69_setMode(uint8_t newMode)
-{
-    spiWrite(RFM69_REG_01_OPMODE, (spiRead(RFM69_REG_01_OPMODE) & 0xE3) | newMode);
-    _mode = newMode;
-}
 
 uint8_t  RFM69_mode()
 {
     return _mode;
+}
+
+void RFM69_clearFifo() {
+    // Must only be called in RX Mode
+    // Apparently this works... found in HopeRF demo code
+    RFM69_setMode(RFM69_MODE_STDBY);
+    RFM69_setMode(RFM69_MODE_RX);
 }
 
 uint8_t RFM69_checkRx()
@@ -161,14 +169,6 @@ void RFM69_SetLnaMode(uint8_t lnaMode) {
     // RF_TESTLNA_SENSITIVE
     spiWrite(RFM69_REG_58_TEST_LNA, lnaMode);
 }
-
-void RFM69_clearFifo() {
-    // Must only be called in RX Mode
-    // Apparently this works... found in HopeRF demo code
-    RFM69_setMode(RFM69_MODE_STDBY);
-    RFM69_setMode(RFM69_MODE_RX);
-}
-
 
 int RFM69_readTemp()
 {

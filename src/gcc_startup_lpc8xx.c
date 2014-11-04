@@ -18,7 +18,7 @@
 // Allocated stack space
 //
 //*****************************************************************************
-#define STACKSIZE 64
+#define STACKSIZE 72
 
 static unsigned int StackMem[STACKSIZE];
 #define _pStackTop ((void *)((unsigned int)StackMem + sizeof(StackMem)))

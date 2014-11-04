@@ -92,45 +92,6 @@ void configurePins() {
     
 }
 
-/**
- * It processing incoming data by the radio or serial connection. This function
- * has to be continously called to keep the node running. This function also
- * adds a delay which is specified as 100ms per unit. Therefore 1000 = 100 sec
- * @param countdown delay added to this function
- */
-void awaitData(int countdown) {
-    
-    uint8_t rx_len;
-    
-    //Clear buffer
-    data_temp[0] = '\0';
-    
-    RFM69_setMode(RFM69_MODE_RX);
-    
-    while(countdown > 0) {
-
-    	// Check rx buffer
-        if(RFM69_checkRx() == 1) {
-            RFM69_recv(data_temp,  &rx_len);
-            data_temp[rx_len - 1] = '\0';
-            #ifdef DEBUG
-                //rssi = RFM69_lastRssi();
-                printf("rx: %s\r\n",data_temp);
-                //printf("RSSI: %d\r\n, rssi");
-            #endif
-            processData(rx_len);
-        }
-
-        #ifdef SERIAL_IN
-                // Check tx buffer
-                checkTxBuffer();
-        #endif
-
-        countdown--;
-        mrtDelay(100);
-    }
-}
-
 #ifdef SERIAL_IN
 /**
  * Checks for incoming serial data which will be send by radio. This function
@@ -169,6 +130,23 @@ inline void checkTxBuffer(void) {
 	}
 }
 #endif
+
+/**
+ * Packet data transmission
+ * @param Packet length
+ */
+void transmitData(uint8_t i) {
+
+    #ifdef DEBUG
+        printf("tx: %s\r\n", data_temp);
+    #endif
+
+    // Transmit the data (need to include the length of the packet and power in dbmW)
+    RFM69_send(data_temp, i, POWER_OUTPUT);
+
+    //Ensure we are in RX mode
+    RFM69_setMode(RFM69_MODE_RX);
+}
 
 /**
  * This function is called when a packet is received by the radio. It will
@@ -210,20 +188,42 @@ inline void processData(uint32_t len) {
 }
 
 /**
- * Packet data transmission
- * @param Packet length
+ * It processing incoming data by the radio or serial connection. This function
+ * has to be continously called to keep the node running. This function also
+ * adds a delay which is specified as 100ms per unit. Therefore 1000 = 100 sec
+ * @param countdown delay added to this function
  */
-void transmitData(uint8_t i) {
-    
-    #ifdef DEBUG
-        printf("tx: %s\r\n", data_temp);
-    #endif
+void awaitData(int countdown) {
 
-    // Transmit the data (need to include the length of the packet and power in dbmW)
-    RFM69_send(data_temp, i, POWER_OUTPUT);
-    
-    //Ensure we are in RX mode
+    uint8_t rx_len;
+
+    //Clear buffer
+    data_temp[0] = '\0';
+
     RFM69_setMode(RFM69_MODE_RX);
+
+    while(countdown > 0) {
+
+        // Check rx buffer
+        if(RFM69_checkRx() == 1) {
+            RFM69_recv(data_temp,  &rx_len);
+            data_temp[rx_len - 1] = '\0';
+            #ifdef DEBUG
+                //rssi = RFM69_lastRssi();
+                printf("rx: %s\r\n",data_temp);
+                //printf("RSSI: %d\r\n, rssi");
+            #endif
+            processData(rx_len);
+        }
+
+        #ifdef SERIAL_IN
+                // Check tx buffer
+                checkTxBuffer();
+        #endif
+
+        countdown--;
+        mrtDelay(100);
+    }
 }
 
 /**

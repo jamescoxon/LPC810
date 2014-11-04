@@ -756,7 +756,6 @@
 
 
 volatile uint8_t    _mode;
-uint8_t             _buf[RFM69_MAX_MESSAGE_LEN];
 void setMode(uint8_t newMode);
 
 volatile uint8_t    _bufLen;
