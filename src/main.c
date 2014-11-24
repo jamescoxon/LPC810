@@ -195,7 +195,7 @@ inline void processData(uint32_t len) {
  */
 void awaitData(int countdown) {
 
-    uint8_t rx_len, flags1, old_flags1 = 0x90, err_count = 0;
+    uint8_t rx_len, flags1, old_flags1 = 0x90;
 
     //Clear buffer
     data_temp[0] = '\0';
@@ -213,20 +213,16 @@ void awaitData(int countdown) {
             old_flags1 = flags1;
         }
 #endif
-        if (flags1 == 0xd8) {
-            if (err_count++ > 3) {
-                // restart the Rx process
-                spiWrite(RFM69_REG_3D_PACKET_CONFIG2, spiRead(RFM69_REG_3D_PACKET_CONFIG2) | RF_PACKET2_RXRESTART);
-                rx_restarts++;
-                // reset the RSSI threshold
-                floor_rssi = RFM69_sampleRssi();
+        if (flags1 & RF_IRQFLAGS1_TIMEOUT) {
+            // restart the Rx process
+            spiWrite(RFM69_REG_3D_PACKET_CONFIG2, spiRead(RFM69_REG_3D_PACKET_CONFIG2) | RF_PACKET2_RXRESTART);
+            rx_restarts++;
+            // reset the RSSI threshold
+            floor_rssi = RFM69_sampleRssi();
 #ifdef DEBUG
-                // and print threshold
-                printf("Restart Rx %d\r\n", RFM69_lastRssiThreshold());
+            // and print threshold
+            printf("Restart Rx %d\r\n", RFM69_lastRssiThreshold());
 #endif
-            }
-        } else {
-            err_count = 0;
         }
         // Check rx buffer
         if(RFM69_checkRx() == 1) {
