@@ -44,6 +44,7 @@ uint8_t RFM69_init()
     for (i = 0; CONFIG[i][0] != 255; i++)
         spiWrite(CONFIG[i][0], CONFIG[i][1]);
     
+    _rssi_threshold = spiRead(RFM69_REG_29_RSSI_THRESHOLD);
     RFM69_setMode(_mode);
     
     // Clear TX/RX Buffer
@@ -222,8 +223,12 @@ int16_t RFM69_sampleRssi() {
     }
     // Read RSSI value
     rssi = spiRead(RFM69_REG_24_RSSI_VALUE);
-    // Set threshold 4dB above noise floor
-    _rssi_threshold = rssi - 8;
+    // Incrementally adjust threshold to 3dB above noise floor
+    if(rssi - 6 < _rssi_threshold) {
+        _rssi_threshold--;
+    } else {
+        _rssi_threshold++;
+    }
     spiWrite(RFM69_REG_29_RSSI_THRESHOLD, _rssi_threshold);
     // Restart reception with new threshold
     spiWrite(RFM69_REG_3D_PACKET_CONFIG2, spiRead(RFM69_REG_3D_PACKET_CONFIG2) | RF_PACKET2_RXRESTART);

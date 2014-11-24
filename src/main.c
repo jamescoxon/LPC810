@@ -221,8 +221,8 @@ void awaitData(int countdown) {
                 // reset the RSSI threshold
                 floor_rssi = RFM69_sampleRssi();
 #ifdef DEBUG
-                // and print noise floor
-                printf("Restart Rx %d\r\n", floor_rssi);
+                // and print threshold
+                printf("Restart Rx %d\r\n", RFM69_lastRssiThreshold());
 #endif
             }
         } else {
