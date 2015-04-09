@@ -53,23 +53,23 @@
     #include "gps.h"
 #endif
 
-#ifdef GPS
+#ifdef ADC
     #include "adc.h"
 #endif
 
 //NODE SPECIFIC DETAILS - need to be changed
 #define NUM_REPEATS			5
-#define NODE_ID				"XXX"
+#define NODE_ID				"AH1"
 #define LOCATION_STRING		"xx.xxx,xx.xxx"
 #define POWER_OUTPUT		20				// Output power in dbmW
-#define TX_GAP				300				// Milliseconds between tx = tx_gap * 100, therefore 1000 = 100 seconds
+#define TX_GAP				100				// Milliseconds between tx = tx_gap * 100, therefore 1000 = 100 seconds
 #define MAX_TX_CHARS		32				// Maximum chars which can be transmitted in a single packet
 
 #ifdef SERIAL_IN
 char data_out_temp[MAX_TX_CHARS+1];
 #endif
 
-char data_temp[64];
+char data_temp[74];
 
 uint8_t data_count = 96; // 'a' - 1 (as the first function will at 1 to make it 'a'
 unsigned int rx_packets = 0, random_output = 0;
@@ -79,28 +79,22 @@ int16_t rx_rssi, floor_rssi;
  * Setup all pins in the switch matrix of the LPC810
  */
 void configurePins() {
-    // Enable SWM clock
+    /* Enable SWM clock */
     LPC_SYSCON->SYSAHBCLKCTRL |= (1<<7);
     
-    // Pin Assign 8 bit Configuration
-#ifdef ADC
-    // U0_RXD
-    // ACMP_I2
-    LPC_SWM->PINASSIGN0 = 0xffff00ffUL;
-#else
-    // U0_TXD
-    // U0_RXD
-    LPC_SWM->PINASSIGN0 = 0xffff0001UL;
-#endif
-    // SPI0_SCK
+    /* Pin Assign 8 bit Configuration */
+    /* U0_TXD */
+    LPC_SWM->PINASSIGN0 = 0xffffff00UL;
+    /* SPI0_SCK */
     LPC_SWM->PINASSIGN3 = 0x02ffffffUL;
-    // SPI0_MOSI
-    // SPI0_MISO
-    // SPI0_SSEL
+    /* SPI0_MOSI */
+    /* SPI0_MISO */
+    /* SPI0_SSEL */
     LPC_SWM->PINASSIGN4 = 0xff050304UL;
     
     /* Pin Assign 1 bit Configuration */
-    LPC_SWM->PINENABLE0 = 0xffffffffUL;
+    /* ACMP_I2 */
+    LPC_SWM->PINENABLE0 = 0xfffffffdUL;
     
 }
 
@@ -269,6 +263,10 @@ int main(void)
     
     // Configure the multi-rate timer for 1ms ticks
     mrtInit(__SYSTEM_CLOCK/1000);
+
+    /* Enable AHB clock to the Switch Matrix , UART0 , GPIO , IOCON, MRT , ACMP */
+    LPC_SYSCON->SYSAHBCLKCTRL |= (1 << 7) | (1 << 14) /*| (1 << 6)*//* | (1 << 18)*/
+    | (1 << 10) | (1 << 19);
     
     // Configure the switch matrix (setup pins for UART0 and SPI)
     configurePins();
@@ -325,8 +323,17 @@ int main(void)
         
 #ifdef ADC
         //Read ADC
-        int adc_result = read_adc2();
+        int adc_result1 = read_adc2();
+        mrtDelay(100);
+        int adc_result2 = read_adc2();
+        mrtDelay(100);
+        int adc_result3 = read_adc2();
+        int adc_result = (adc_result1 + adc_result2 + adc_result3) / 3;
+        printf("ADC: %d\r\n", adc_result);
+        //mrtDelay(1000);
 #endif
+        
+
         
 #ifdef GPS
 			n = sprintf(data_temp, "%d%cL%d,%d,%dT%dR%d[%s]", NUM_REPEATS, data_count, lat, lon, alt, int_temp, rx_rssi, NODE_ID);
@@ -334,13 +341,14 @@ int main(void)
 			if(data_count == 97) {
 				n = sprintf(data_temp, "%d%cL%s[%s]", NUM_REPEATS, data_count, LOCATION_STRING, NODE_ID);
 			} else {
-				n = sprintf(data_temp, "%d%cT%dR%d,%dC%d[%s]", NUM_REPEATS, data_count, int_temp, rx_rssi, floor_rssi, rx_packets, NODE_ID);
+				n = sprintf(data_temp, "%d%cT%dR%d,%dC%dV%d[%s]", NUM_REPEATS, data_count, int_temp, rx_rssi, floor_rssi, rx_packets, adc_result, NODE_ID);
 			}
 #endif
         
         transmitData(n);
         
         awaitData(TX_GAP);
-    }
+    
+         }
     
 }
