@@ -38,6 +38,16 @@
     
     { RFM69_REG_25_DIO_MAPPING1, RF_DIOMAPPING1_DIO0_01 },
     { RFM69_REG_26_DIO_MAPPING2, RF_DIOMAPPING2_CLKOUT_OFF }, // Switch off Clkout
+
+    /* receiver timeout:
+     * max packet length is 72 octets
+     * (3 preamble, 2 sync, 1 length, 64 message, 2 CRC)
+     * timeout interrupt is generated (value*16*Tbit) after RSSI interrupt if
+     * PayloadReady interrupt doesn't occur so a value of 36 would correspond
+     * to the packet duration but not allow for any other delays hence set to
+     * 40
+     */
+    { RFM69_REG_2B_RX_TIMEOUT2, 40 },
     
     // { RFM69_REG_2D_PREAMBLE_LSB, RF_PREAMBLESIZE_LSB_VALUE } // default 3 preamble bytes 0xAAAAAA
     

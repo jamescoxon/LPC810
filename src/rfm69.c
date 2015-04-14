@@ -44,6 +44,7 @@ uint8_t RFM69_init()
     for (i = 0; CONFIG[i][0] != 255; i++)
         spiWrite(CONFIG[i][0], CONFIG[i][1]);
     
+    _rssi_threshold = spiRead(RFM69_REG_29_RSSI_THRESHOLD);
     RFM69_setMode(_mode);
     
     // Clear TX/RX Buffer
@@ -180,11 +181,11 @@ int RFM69_readTemp()
     // Trigger Temperature Measurement
     spiWrite(RFM69_REG_4E_TEMP1, RF_TEMP1_MEAS_START);
     // Check Temperature Measurement has started
-    if(!(RF_TEMP1_MEAS_RUNNING && spiRead(RFM69_REG_4E_TEMP1))){
+    if(!(RF_TEMP1_MEAS_RUNNING & spiRead(RFM69_REG_4E_TEMP1))){
         return 255;
     }
     // Wait for Measurement to complete
-    while(RF_TEMP1_MEAS_RUNNING && spiRead(RFM69_REG_4E_TEMP1)) { };
+    while(RF_TEMP1_MEAS_RUNNING & spiRead(RFM69_REG_4E_TEMP1)) { };
     // Read raw ADC value
     uint8_t rawTemp = spiRead(RFM69_REG_4F_TEMP2);
 	
@@ -200,16 +201,42 @@ int16_t RFM69_lastRssi() {
 }
 
 int16_t RFM69_sampleRssi() {
+    int count = 0;
+    uint8_t rssi;
+
     // Must only be called in RX mode
     if(_mode!=RFM69_MODE_RX) {
         // Not sure what happens otherwise, so check this
         return 0;
     }
+    // Set threshold to minimum signal
+    spiWrite(RFM69_REG_29_RSSI_THRESHOLD, 0xff);
     // Trigger RSSI Measurement
     spiWrite(RFM69_REG_23_RSSI_CONFIG, RF_RSSI_START);
     // Wait for Measurement to complete
-    while(!(RF_RSSI_DONE && spiRead(RFM69_REG_23_RSSI_CONFIG))) { };
-    // Read, store in _lastRssi and return RSSI Value
-    _lastRssi = -(spiRead(RFM69_REG_24_RSSI_VALUE)/2);
-    return _lastRssi;
+    while(!(RF_RSSI_DONE & spiRead(RFM69_REG_23_RSSI_CONFIG))) {
+        // there is a small chance the measurement may not complete
+        // so this avoids waiting forever
+        if (count++ > 1000) {
+            return 1;
+        }
+    }
+    // Read RSSI value
+    rssi = spiRead(RFM69_REG_24_RSSI_VALUE);
+    // Incrementally adjust threshold to 3dB above noise floor
+    if(rssi - 6 < _rssi_threshold) {
+        _rssi_threshold--;
+    } else {
+        _rssi_threshold++;
+    }
+    spiWrite(RFM69_REG_29_RSSI_THRESHOLD, _rssi_threshold);
+    // Restart reception with new threshold
+    spiWrite(RFM69_REG_3D_PACKET_CONFIG2, spiRead(RFM69_REG_3D_PACKET_CONFIG2) | RF_PACKET2_RXRESTART);
+    // Return RSSI Value
+    return -(rssi/2);
 }
+
+int16_t RFM69_lastRssiThreshold() {
+    return -(_rssi_threshold/2);
+}
+
