@@ -33,8 +33,9 @@
  */
 /**************************************************************************/
 // Comment out if you don't want printing to serial (if isolated node)
-#define DEBUG
+//#define DEBUG
 
+#define GATEWAY
 // Comment out if you don't want GPS (ublox binary)
 //#define GPS
 
@@ -59,10 +60,10 @@
 
 //NODE SPECIFIC DETAILS - need to be changed
 #define NUM_REPEATS			5
-#define NODE_ID				"AH0"
+#define NODE_ID				"AB"
 #define LOCATION_STRING		"51.357,1.020"
 #define POWER_OUTPUT		20				// Output power in dbmW
-#define TX_GAP				100				// Milliseconds between tx = tx_gap * 100, therefore 1000 = 100 seconds
+#define TX_GAP				200				// Milliseconds between tx = tx_gap * 100, therefore 1000 = 100 seconds
 #define MAX_TX_CHARS		32				// Maximum chars which can be transmitted in a single packet
 
 #ifdef SERIAL_IN
@@ -73,7 +74,7 @@ char data_temp[74];
 
 uint8_t data_count = 96; // 'a' - 1 (as the first function will at 1 to make it 'a'
 unsigned int rx_packets = 0, random_output = 0, rx_restarts = 0;
-int16_t rx_rssi, floor_rssi, rssi_threshold;
+int16_t rx_rssi, floor_rssi, rssi_threshold, adc_result;
 
 /**
  * Setup all pins in the switch matrix of the LPC810
@@ -143,8 +144,8 @@ inline void checkTxBuffer(void) {
  */
 void transmitData(uint8_t i) {
 
-    #ifdef DEBUG
-        printf("tx: %s\r\n", data_temp);
+    #ifdef GATEWAY
+        printf("rx: %s|0\r\n", data_temp);
     #endif
     
     // Transmit the data (need to include the length of the packet and power in dbmW)
@@ -234,7 +235,7 @@ void awaitData(int countdown) {
         if(RFM69_checkRx() == 1) {
             RFM69_recv(data_temp,  &rx_len);
             data_temp[rx_len - 1] = '\0';
-            #ifdef DEBUG
+            #ifdef GATEWAY
                 printf("rx: %s|%d\r\n",data_temp, RFM69_lastRssi());
             #endif
             processData(rx_len);
@@ -348,9 +349,12 @@ int main(void)
         int adc_result2 = read_adc2();
         mrtDelay(100);
         int adc_result3 = read_adc2();
-        int adc_result = (adc_result1 + adc_result2 + adc_result3) / 3;
+        adc_result = (adc_result1 + adc_result2 + adc_result3) / 3;
+#endif
+        
+#ifdef DEBUG
         printf("ADC: %d\r\n", adc_result);
-        //mrtDelay(1000);
+
 #endif
         
 
