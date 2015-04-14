@@ -16,7 +16,7 @@
 
     { RFM69_REG_07_FRF_MSB,     0xD9 }, // 869.5 MHz
     { RFM69_REG_08_FRF_MID,     0x60 }, // calculated: 0x80?
-    { RFM69_REG_09_FRF_LSB,     0x12 },
+    { RFM69_REG_09_FRF_LSB,     0x92 },
     
     { RFM69_REG_0B_AFC_CTRL,    RF_AFCLOWBETA_ON }, // AFC Offset On
     

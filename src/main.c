@@ -59,8 +59,8 @@
 
 //NODE SPECIFIC DETAILS - need to be changed
 #define NUM_REPEATS			5
-#define NODE_ID				"AH1"
-#define LOCATION_STRING		"xx.xxx,xx.xxx"
+#define NODE_ID				"AH0"
+#define LOCATION_STRING		"51.357,1.020"
 #define POWER_OUTPUT		20				// Output power in dbmW
 #define TX_GAP				100				// Milliseconds between tx = tx_gap * 100, therefore 1000 = 100 seconds
 #define MAX_TX_CHARS		32				// Maximum chars which can be transmitted in a single packet
