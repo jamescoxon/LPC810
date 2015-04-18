@@ -32,16 +32,7 @@
  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 /**************************************************************************/
-// Comment out if you don't want printing to serial (if isolated node)
-//#define DEBUG
-
-#define GATEWAY
-// Comment out if you don't want GPS (ublox binary)
-//#define GPS
-
-//#define SERIAL_IN
-
-#define ADC
+#include "settings.h"
 
 #include <stdio.h>
 #include "LPC8xx.h"
@@ -57,14 +48,6 @@
 #ifdef ADC
     #include "adc.h"
 #endif
-
-//NODE SPECIFIC DETAILS - need to be changed
-#define NUM_REPEATS			5
-#define NODE_ID				"AB"
-#define LOCATION_STRING		"51.357,1.020"
-#define POWER_OUTPUT		20				// Output power in dbmW
-#define TX_GAP				200				// Milliseconds between tx = tx_gap * 100, therefore 1000 = 100 seconds
-#define MAX_TX_CHARS		32				// Maximum chars which can be transmitted in a single packet
 
 #ifdef SERIAL_IN
 char data_out_temp[MAX_TX_CHARS+1];
@@ -360,12 +343,18 @@ int main(void)
 
         
 #ifdef GPS
-			n = sprintf(data_temp, "%d%cL%d,%d,%dT%dR%d[%s]", NUM_REPEATS, data_count, lat, lon, alt, int_temp, rx_rssi, NODE_ID);
+        n = sprintf(data_temp, "%d%cL%d,%d,%dT%dR%d[%s]", NUM_REPEATS, data_count, lat, lon, alt, int_temp, rx_rssi, NODE_ID);
+#elseif DEBUG
+        if(data_count == 97) {
+            n = sprintf(data_temp, "%d%cL%s[%s]", NUM_REPEATS, data_count, LOCATION_STRING, NODE_ID);
+        } else {
+            n = sprintf(data_temp, "%d%cT%dR%d,%dC%dX%d,%dV%d[%s]", NUM_REPEATS, data_count, int_temp, rx_rssi, floor_rssi, rx_packets, rx_restarts, rssi_threshold, adc_result, NODE_ID);
+        }
 #else
 			if(data_count == 97) {
 				n = sprintf(data_temp, "%d%cL%s[%s]", NUM_REPEATS, data_count, LOCATION_STRING, NODE_ID);
 			} else {
-				n = sprintf(data_temp, "%d%cT%dR%d,%dC%dX%d,%dV%d[%s]", NUM_REPEATS, data_count, int_temp, rx_rssi, floor_rssi, rx_packets, rx_restarts, rssi_threshold, adc_result, NODE_ID);
+				n = sprintf(data_temp, "%d%cT%dR%dV%d[%s]", NUM_REPEATS, data_count, int_temp, rx_rssi, adc_result, NODE_ID);
 			}
 #endif
         
