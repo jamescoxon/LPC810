@@ -159,6 +159,7 @@ inline void processData(uint32_t len) {
             break;
         
         // 2) is the second position in array a letter
+        //      < 'a' or > 'z' then break
         if(data_temp[1] < 97 || data_temp[1] > 122)
             break;
         
@@ -263,11 +264,11 @@ int main(void)
     gpioInit();
     
 #ifdef GPS
-		// Initialise the UART0 block for printf output
-		uart0Init(9600);
+    // Initialise the UART0 block for printf output
+    uart0Init(9600);
 #else
-		// Initialise the UART0 block for printf output
-		uart0Init(115200);
+    // Initialise the UART0 block for printf output
+    uart0Init(115200);
 #endif
     
     // Configure the multi-rate timer for 1ms ticks
@@ -358,11 +359,11 @@ int main(void)
             n = sprintf(data_temp, "%d%cT%dR%d,%dC%dX%d,%dV%d[%s]", NUM_REPEATS, data_count, int_temp, rx_rssi, floor_rssi, rx_packets, rx_restarts, rssi_threshold, adc_result, NODE_ID);
         }
 #else
-			if(data_count == 97) {
-				n = sprintf(data_temp, "%d%cL%s[%s]", NUM_REPEATS, data_count, LOCATION_STRING, NODE_ID);
-			} else {
-				n = sprintf(data_temp, "%d%cT%dR%dV%d[%s]", NUM_REPEATS, data_count, int_temp, rx_rssi, adc_result, NODE_ID);
-			}
+        if(data_count == 97) {
+            n = sprintf(data_temp, "%d%cL%s[%s]", NUM_REPEATS, data_count, LOCATION_STRING, NODE_ID);
+        } else {
+            n = sprintf(data_temp, "%d%cT%dR%dV%d[%s]", NUM_REPEATS, data_count, int_temp, rx_rssi, adc_result, NODE_ID);
+        }
 #endif
         
         transmitData(n);
