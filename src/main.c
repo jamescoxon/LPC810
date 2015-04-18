@@ -53,7 +53,7 @@
 char data_out_temp[MAX_TX_CHARS+1];
 #endif
 
-char data_temp[74];
+char data_temp[66];
 
 uint8_t data_count = 96; // 'a' - 1 (as the first function will at 1 to make it 'a'
 unsigned int rx_packets = 0, random_output = 0, rx_restarts = 0;
@@ -146,13 +146,20 @@ inline void processData(uint32_t len) {
     uint8_t i, packet_len;
     
     for(i=0; i<len; i++) {
+        //finds the end of the packet
         if(data_temp[i] != ']')
             continue;
         
-        //Print the string
+        //then terminates the string, ignore everything afterwards
         data_temp[i+1] = '\0';
         
-        if(data_temp[0] <= '0')
+        //Check validity of string
+        // 1) is the first position in array a number
+        if(data_temp[0] <= '0' || data_temp[0] > '9')
+            break;
+        
+        // 2) is the second position in array a letter
+        if(data_temp[1] < 97 || data_temp[1] > 122)
             break;
         
         //Reduce the repeat value
