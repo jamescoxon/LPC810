@@ -155,7 +155,7 @@ inline void processData(uint32_t len) {
         
         //Check validity of string
         // 1) is the first position in array a number
-        if(data_temp[0] <= '0' || data_temp[0] > '9')
+        if(data_temp[0] <= 0 || data_temp[0] > 9)
             break;
         
         // 2) is the second position in array a letter
