@@ -157,14 +157,23 @@ inline void processData(uint32_t len) {
         
         //Check validity of string
         // 1) is the first position in array a number
-        if(data_temp[0] <= 0 || data_temp[0] > 9)
+        //printf("%d\r\n", data_temp[0]);
+        if((int)data_temp[0] <= 48 || (int)data_temp[0] > 57) {
+            //printf("Error1\r\n");
             break;
+        }
         
         // 2) is the second position in array a letter
         //      < 'a' or > 'z' then break
-        if(data_temp[1] < 97 || data_temp[1] > 122)
+        //printf("%d\r\n", data_temp[1]);
+        if((int)data_temp[1] < 97 || (int)data_temp[1] > 122){
+            //printf("Error2\r\n");
             break;
+        }
         
+#ifdef GATEWAY
+        printf("rx: %s|%d\r\n",data_temp, RFM69_lastRssi());
+#endif
         //Reduce the repeat value
         data_temp[0] = data_temp[0] - 1;
         //Now add , and end line and let string functions do the rest
@@ -228,9 +237,6 @@ void awaitData(int countdown) {
         if(RFM69_checkRx() == 1) {
             RFM69_recv(data_temp,  &rx_len);
             data_temp[rx_len - 1] = '\0';
-            #ifdef GATEWAY
-                printf("rx: %s|%d\r\n",data_temp, RFM69_lastRssi());
-            #endif
             processData(rx_len);
         }
 
