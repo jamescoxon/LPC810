@@ -1,0 +1,7 @@
+gitversion
+*.d
+*.o
+src/settings.h
+ukhasnet.axf
+ukhasnet.bin
+ukhasnet.hex
