@@ -40,9 +40,12 @@
 #include <stdio.h>
 #include "LPC8xx.h"
 #include "mrt.h"
-#include "uart.h"
 #include "spi.h"
 #include "rfm69.h"
+
+#ifdef defined(GATEWAY) || defined(DEBUG) || defined(GPS)
+    #include "uart.h"
+#endif
 
 #ifdef GPS
     #include "gps.h"
@@ -50,17 +53,19 @@
 
 #ifdef ADC
     #include "adc.h"
+    int16_t adc_result;
 #endif
 
 #ifdef SERIAL_IN
-char data_out_temp[MAX_TX_CHARS+1];
+    #include "uart.h"
+    char data_out_temp[MAX_TX_CHARS+1];
 #endif
 
 char data_temp[66];
 
 uint8_t data_count = 96; // 'a' - 1 (as the first function will at 1 to make it 'a'
 unsigned int rx_packets = 0, random_output = 0, rx_restarts = 0;
-int16_t rx_rssi, floor_rssi, rssi_threshold, adc_result;
+int16_t rx_rssi, floor_rssi, rssi_threshold;
 
 /**
  * Setup all pins in the switch matrix of the LPC810
@@ -280,7 +285,7 @@ int main(void)
 #ifdef GPS
     // Initialise the UART0 block for printf output
     uart0Init(9600);
-#else
+#elif defined(GATEWAY) || defined(DEBUG)
     // Initialise the UART0 block for printf output
     uart0Init(115200);
 #endif
