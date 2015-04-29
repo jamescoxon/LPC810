@@ -11,7 +11,7 @@
 //#define DEBUG
 
 //Print rx'd strings only
-#define GATEWAY
+//#define GATEWAY
 
 // Comment out if you don't want GPS (ublox binary)
 //#define GPS

@@ -34,6 +34,7 @@
  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 /**************************************************************************/
+//Node settings have been moved seperate file "settings.h"
 #include "settings.h"
 
 #include <stdio.h>
@@ -298,6 +299,10 @@ int main(void)
     random_output = NODE_ID[0] + NODE_ID[1] + NODE_ID[2];
     //printf("random: %d\r\n", random_output);
     
+#ifdef DEBUG
+    printf("Node Booted\r\n");
+#endif
+    
     RFM69_init();
     
 #ifdef GPS
@@ -343,12 +348,7 @@ int main(void)
         
 #ifdef ADC
         //Read ADC
-        int adc_result1 = read_adc2();
-        mrtDelay(100);
-        int adc_result2 = read_adc2();
-        mrtDelay(100);
-        int adc_result3 = read_adc2();
-        adc_result = (adc_result1 + adc_result2 + adc_result3) / 3;
+        adc_result = read_adc2();
 #endif
         
 #ifdef DEBUG
