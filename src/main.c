@@ -267,6 +267,11 @@ void incrementPacketCount(void) {
     }
 }
 
+void sleepRadio(){
+    RFM69_setMode(RFM69_MODE_SLEEP);
+    mrtDelay(TX_GAP * 100);
+}
+
 int main(void)
 {
     // Initialise the GPIO block
@@ -363,9 +368,9 @@ int main(void)
             
 #ifdef GPS
             n = sprintf(data_temp, "%d%cL%d,%d,%dT%dR%d[%s]", NUM_REPEATS, data_count, lat, lon, alt, int_temp, rx_rssi, NODE_ID);
-#elseif DEBUG
+#elif defined(DEBUG)
             n = sprintf(data_temp, "%d%cT%dR%d,%dC%dX%d,%dV%d[%s]", NUM_REPEATS, data_count, int_temp, rx_rssi, floor_rssi, rx_packets, rx_restarts, rssi_threshold, adc_result, NODE_ID);
-#elseif ADC
+#elif defined(ADC)
             n = sprintf(data_temp, "%d%cT%dR%dV%d[%s]", NUM_REPEATS, data_count, int_temp, rx_rssi, adc_result, NODE_ID);
 #else
             n = sprintf(data_temp, "%d%cT%dR%d[%s]", NUM_REPEATS, data_count, int_temp, rx_rssi, NODE_ID);
@@ -374,7 +379,11 @@ int main(void)
         
         transmitData(n);
         
+#ifdef ZOMBIE_MODE
+        sleepRadio();
+#else
         awaitData(TX_GAP);
+#endif
     
          }
     
