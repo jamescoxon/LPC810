@@ -142,8 +142,13 @@ void transmitData(uint8_t i) {
     // Transmit the data (need to include the length of the packet and power in dbmW)
     RFM69_send(data_temp, i, POWER_OUTPUT);
 
+#ifdef ZOMBIE_MODE
+    RFM69_setMode(RFM69_MODE_SLEEP);
+#else
     //Ensure we are in RX mode
     RFM69_setMode(RFM69_MODE_RX);
+#endif
+
 }
 
 /**
@@ -314,6 +319,10 @@ int main(void)
 #endif
     
     RFM69_init();
+
+#ifdef ZOMBIE_MODE
+    RFM69_setMode(RFM69_MODE_SLEEP);
+#endif
     
 #ifdef GPS
 		int navmode = 9;
