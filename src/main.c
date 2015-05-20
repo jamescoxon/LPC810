@@ -53,7 +53,6 @@
 
 #ifdef ADC
     #include "adc.h"
-    int16_t adc_result;
 #endif
 
 #ifdef SERIAL_IN
@@ -65,8 +64,7 @@ char data_temp[66];
 
 uint8_t data_count = 96; // 'a' - 1 (as the first function will at 1 to make it 'a'
 unsigned int rx_packets = 0, random_output = 0, rx_restarts = 0;
-int16_t rx_rssi, floor_rssi, rssi_threshold;
-
+int16_t rx_rssi, floor_rssi, rssi_threshold, adc_result = 0;
 /**
  * Setup all pins in the switch matrix of the LPC810
  */
@@ -276,14 +274,89 @@ void incrementPacketCount(void) {
         data_count = 98; //'b'
     }
 }
+//Low Power Modes
+
+void init_sleep(){
+    //http://jeelabs.org/book/1446b/
+    //https://github.com/Fadis/lpc810/blob/master/mbed/target/hal/TARGET_NXP/TARGET_LPC81X/sleep.c
+    LPC_SYSCON->SYSAHBCLKCTRL |= 1<<9;  // SYSCTL_CLOCK_WKT
+    LPC_PMU->DPDCTRL |= (1<<2)|(1<<3);  // LPOSCEN and LPOSCDPDEN
+    LPC_WKT->CTRL = 1<<0;               // WKT_CTRL_CLKSEL
+    
+    NVIC_EnableIRQ(WKT_IRQn);
+    
+    LPC_SYSCON->STARTERP1 = 1<<15;      // wake up from alarm/wake timer
+    SCB->SCR |= 1<<2;                   // enable SLEEPDEEP mode
+    //SCB->SCR = 0;                          // enable SLEEP (clock remains running, system clock remain in active mode but processor not clocked
+    //LPC_PMU->PCON = 3;
+    
+    //Deep sleep in PCON
+    LPC_PMU->PCON &= ~0x03;
+    LPC_PMU->PCON |= 0x01;
+    
+    //If brownout detection and WDT are enabled, keep them enabled during sleep
+    LPC_SYSCON->PDSLEEPCFG = LPC_SYSCON->PDRUNCFG;
+    
+    //After wakeup same stuff as currently enabled:
+    LPC_SYSCON->PDAWAKECFG = LPC_SYSCON->PDRUNCFG;
+
+}
+
+void sleepMicro(uint32_t sleep_time){
+    LPC_WKT->COUNT = (sleep_time * 10);              // 10 KHz / 5000 -> wakeup in 500 ms
+    __WFI();
+}
+
+void WKT_IRQHandler () {
+    LPC_WKT->CTRL = LPC_WKT->CTRL;      // clear the alarm interrupt
+}
 
 void sleepRadio(){
+    printf("Sleeping");
     RFM69_setMode(RFM69_MODE_SLEEP);
-    mrtDelay(TX_GAP * 100);
+    init_sleep();
+    sleepMicro(60000);
+    printf("Awake");
+    
 }
+
+// setup the analog(ue) comparator, using the ladder on + and bandgap on -
+void acmpVccSetup () {
+    LPC_SYSCON->PDRUNCFG &= ~(1<<15);             // power up comparator
+    LPC_SYSCON->SYSAHBCLKCTRL |= (1<<19);         // ACMP & IOCON clocks
+    //LPC_SYSCON->PRESETCTRL &= ~(1<<12);           // reset comparator
+    //LPC_SYSCON->PRESETCTRL |= (1<<12);            // release comparator
+    
+    // connect ladder to CMP+ and bandgap to CMP-
+    LPC_CMP->CTRL = (6<<11); // careful: 6 on LPC81x, 5 on LPC82x !
+}
+
+// estimate the bandgap voltage in terms of Vcc ladder steps, returns as mV
+int acmpVccEstimate () {
+    int i, n;
+    for (i = 2; i < 32; ++i) {
+        LPC_CMP->LAD = (i << 1) | 1;                // use ladder tap i
+        for (n = 0; n < 100; ++n) __ASM("");    // brief settling delay
+        if (LPC_CMP->CTRL & (1<<21))                // if COMPSTAT bit is set
+            break;                                    // ... we're done
+    }
+    // the result is the number of Vcc/31 ladder taps, i.e.
+    //    tap * (Vcc / 31) = 0.9
+    // therefore:
+    //    Vcc = (0.9 * 31) / tap
+    // or, in millivolt:
+    int tap = i - 1;
+    return (900 * 31) / tap;
+}
+
+
 
 int main(void)
 {
+#ifdef BrownOut
+    acmpVccSetup();
+    LPC_SYSCON->BODCTRL = 0x11;  //Should be set to Level 1 (Assertion 2.3V, De-assertion 2.4V) reset
+#endif
     // Initialise the GPIO block
     gpioInit();
     
@@ -304,6 +377,11 @@ int main(void)
     
     // Configure the switch matrix (setup pins for UART0 and SPI)
     configurePins();
+
+    
+#ifdef DEBUG
+    printf("Node Booted\r\n");
+#endif
     
 #ifdef ADC
     /* Initialise the comparator ICMP_2 */
@@ -314,9 +392,7 @@ int main(void)
     random_output = NODE_ID[0] + NODE_ID[1] + NODE_ID[2];
     //printf("random: %d\r\n", random_output);
     
-#ifdef DEBUG
-    printf("Node Booted\r\n");
-#endif
+
     
     RFM69_init();
 
@@ -329,6 +405,11 @@ int main(void)
 		setupGPS();
 #endif
 
+#ifdef ZOMBIE_MODE
+    init_sleep();
+    sleepMicro(10000);
+#endif
+    
 #ifdef DEBUG
 		printf("Node initialized, version %s\r\n",GIT_VER);
 #endif
@@ -368,6 +449,10 @@ int main(void)
 #ifdef ADC
         //Read ADC
         adc_result = read_adc2();
+#endif
+
+#ifdef BrownOut
+        adc_result = acmpVccEstimate();
 #endif
         
 #ifdef DEBUG
