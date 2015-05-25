@@ -177,7 +177,7 @@ int RFM69_readTemp()
     uint8_t oldMode = _mode;
     // Set mode into Standby (required for temperature measurement)
     RFM69_setMode(RFM69_MODE_STDBY);
-	
+	mrtDelay(50);
     // Trigger Temperature Measurement
     spiWrite(RFM69_REG_4E_TEMP1, RF_TEMP1_MEAS_START);
     // Check Temperature Measurement has started

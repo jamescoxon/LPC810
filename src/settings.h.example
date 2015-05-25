@@ -22,3 +22,5 @@
 
 // Zombie mode, no Rx, just Tx, saves power (as radio is sleeping between tx) and also flash
 //#define ZOMBIE_MODE
+
+//#define BrownOut
