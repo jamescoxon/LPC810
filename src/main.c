@@ -136,13 +136,22 @@ void transmitData(uint8_t i) {
     #ifdef GATEWAY
         printf("rx: %s|0\r\n", data_temp);
     #endif
+
+#ifdef ZOMBIE_MODE
+    if (data_count == 97) {
+       RFM69_send(data_temp, i, 10);
+    }
+    else {
+        // Transmit the data (need to include the length of the packet and power in dbmW)
+        RFM69_send(data_temp, i, POWER_OUTPUT);
+    }
+
+    RFM69_setMode(RFM69_MODE_SLEEP);
+#else
     
     // Transmit the data (need to include the length of the packet and power in dbmW)
     RFM69_send(data_temp, i, POWER_OUTPUT);
-
-#ifdef ZOMBIE_MODE
-    RFM69_setMode(RFM69_MODE_SLEEP);
-#else
+    
     //Ensure we are in RX mode
     RFM69_setMode(RFM69_MODE_RX);
 #endif
@@ -287,7 +296,7 @@ void init_sleep(){
     
     LPC_SYSCON->STARTERP1 = 1<<15;      // wake up from alarm/wake timer
     SCB->SCR |= 1<<2;                   // enable SLEEPDEEP mode
-    //SCB->SCR = 0;                          // enable SLEEP (clock remains running, system clock remain in active mode but processor not clocked
+    //SCB->SCR = 0;                     // enable SLEEP (clock remains running, system clock remain in active mode but processor not clocked
     //LPC_PMU->PCON = 3;
     
     //Deep sleep in PCON
@@ -312,11 +321,11 @@ void WKT_IRQHandler () {
 }
 
 void sleepRadio(){
-    printf("Sleeping");
+    //printf("Sleeping");
     RFM69_setMode(RFM69_MODE_SLEEP);
     init_sleep();
-    sleepMicro(60000);
-    printf("Awake");
+    sleepMicro(TX_GAP * 100);
+    //printf("Awake");
     
 }
 
@@ -354,7 +363,6 @@ int acmpVccEstimate () {
 int main(void)
 {
 #ifdef BrownOut
-    acmpVccSetup();
     LPC_SYSCON->BODCTRL = 0x11;  //Should be set to Level 1 (Assertion 2.3V, De-assertion 2.4V) reset
 #endif
     // Initialise the GPIO block
@@ -392,8 +400,6 @@ int main(void)
     random_output = NODE_ID[0] + NODE_ID[1] + NODE_ID[2];
     //printf("random: %d\r\n", random_output);
     
-
-    
     RFM69_init();
 
 #ifdef ZOMBIE_MODE
@@ -408,6 +414,10 @@ int main(void)
 #ifdef ZOMBIE_MODE
     init_sleep();
     sleepMicro(10000);
+#endif
+    
+#ifdef BrownOut
+    acmpVccSetup();
 #endif
     
 #ifdef DEBUG
@@ -477,8 +487,13 @@ int main(void)
         }
         
         transmitData(n);
-        
-#ifdef ZOMBIE_MODE
+
+#ifdef BrownOut
+        sleepRadio();
+        while (acmpVccEstimate() < 3488){
+            sleepRadio();
+        }
+#elif defined(ZOMBIE_MODE)
         sleepRadio();
 #else
         awaitData(TX_GAP);
