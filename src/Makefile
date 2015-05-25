@@ -45,6 +45,7 @@ UKHASNET_OBJS = main.o \
                 printf.o \
                 string.o \
                 adc.o \
+                zombie.o \
                 printf-retarget.o \
                 system_LPC8xx.o \
                 gcc_startup_lpc8xx.o
