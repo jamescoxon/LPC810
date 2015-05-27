@@ -416,7 +416,7 @@ int main(void)
 
 #ifdef BrownOut
         sleepRadio();
-        while (acmpVccEstimate() < 3488){
+        while (acmpVccEstimate() < 3486){
             sleepRadio();
         }
 #elif defined(ZOMBIE_MODE)
