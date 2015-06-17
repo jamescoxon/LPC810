@@ -415,10 +415,26 @@ int main(void)
         transmitData(n);
 
 #ifdef BrownOut
-        sleepRadio();
-        while (acmpVccEstimate() < 3486){
+        adc_result = acmpVccEstimate();
+        
+        if (adc_result < 4000 && adc_result > 3486){
             sleepRadio();
         }
+        else {
+            //If we have lots of power then switch to Rx mode and repeat data
+            int rx_count = 0;
+            while ((acmpVccEstimate() > 4000) && rx_count < 10) {
+                awaitData((TX_GAP / 10));
+                rx_count++;
+            }
+            RFM69_setMode(RFM69_MODE_SLEEP);
+            
+            //If voltage is low then sleep for longer to allow it to charge up
+            while (acmpVccEstimate() < 3486){
+                sleepRadio();
+            }
+        }
+
 #elif defined(ZOMBIE_MODE)
         sleepRadio();
 #else
