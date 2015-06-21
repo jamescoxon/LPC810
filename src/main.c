@@ -340,8 +340,6 @@ int main(void)
 		setupGPS();
 #endif
     
-
-    
 #ifdef DEBUG
 		printf("Node initialized, version %s\r\n",GIT_VER);
 #endif
@@ -385,6 +383,10 @@ int main(void)
 
 #ifdef BrownOut
         adc_result = acmpVccEstimate();
+        // Before transmitting if the input V is too low we could sleep again
+        if (adc_result < 3100) {
+            sleepRadio();
+        }
 #endif
         
 #ifdef DEBUG
@@ -414,12 +416,21 @@ int main(void)
 
 #ifdef BrownOut
         int rx_count = 0;
-        while ((acmpVccEstimate() > 4000) && rx_count < 10) {
-                awaitData((TX_GAP / 10));
-                rx_count++;
-            }
         
-        sleepRadio();
+        if(data_count == 97) {
+            sleepRadio(); //after first packet will need to sleep longer as probably low light conditions
+            sleepRadio(); // so sleep again!
+        }
+        else {
+            //in good light conditions we can try and rx and then sleep afterwards
+            while ((acmpVccEstimate() > 4000) && rx_count < 20) {
+                    awaitData((TX_GAP / 20));
+                    rx_count++;
+                }
+            sleepRadio();
+        }
+        
+        
 
 #elif defined(ZOMBIE_MODE)
         sleepRadio();
