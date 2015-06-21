@@ -419,7 +419,6 @@ int main(void)
         
         if(data_count == 97) {
             sleepRadio(); //after first packet will need to sleep longer as probably low light conditions
-            sleepRadio(); // so sleep again!
         }
         else {
             //in good light conditions we can try and rx and then sleep afterwards
@@ -427,8 +426,9 @@ int main(void)
                     awaitData((TX_GAP / 20));
                     rx_count++;
                 }
-            sleepRadio();
         }
+        
+        sleepRadio(); // so sleep again!
         
         
 
