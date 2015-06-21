@@ -24,7 +24,7 @@ void init_sleep(){
     
     //Deep sleep in PCON
     LPC_PMU->PCON &= ~0x03;
-    LPC_PMU->PCON |= 0x01;
+    LPC_PMU->PCON |= 0x02;
     
     //If brownout detection and WDT are enabled, keep them enabled during sleep
     LPC_SYSCON->PDSLEEPCFG = LPC_SYSCON->PDRUNCFG;
@@ -35,6 +35,7 @@ void init_sleep(){
 }
 
 void sleepMicro(uint32_t sleep_time){
+        
     LPC_WKT->COUNT = (sleep_time * 10);              // 10 KHz / 5000 -> wakeup in 500 ms
     __WFI();
 }
@@ -52,8 +53,9 @@ void sleepRadio(){
     
 }
 
-// setup the analog(ue) comparator, using the ladder on + and bandgap on -
-void acmpVccSetup () {
+// estimate the bandgap voltage in terms of Vcc ladder steps, returns as mV
+int acmpVccEstimate () {
+    
     LPC_SYSCON->PDRUNCFG &= ~(1<<15);             // power up comparator
     LPC_SYSCON->SYSAHBCLKCTRL |= (1<<19);         // ACMP & IOCON clocks
     //LPC_SYSCON->PRESETCTRL &= ~(1<<12);           // reset comparator
@@ -61,10 +63,7 @@ void acmpVccSetup () {
     
     // connect ladder to CMP+ and bandgap to CMP-
     LPC_CMP->CTRL = (6<<11); // careful: 6 on LPC81x, 5 on LPC82x !
-}
-
-// estimate the bandgap voltage in terms of Vcc ladder steps, returns as mV
-int acmpVccEstimate () {
+    
     int i, n;
     for (i = 2; i < 32; ++i) {
         LPC_CMP->LAD = (i << 1) | 1;                // use ladder tap i
@@ -79,6 +78,9 @@ int acmpVccEstimate () {
     // or, in millivolt:
     int tap = i - 1;
     return (900 * 31) / tap;
+    
+    LPC_SYSCON->SYSAHBCLKCTRL &= ~(1<<19);         // ACMP & IOCON clocks
+    LPC_SYSCON->PDRUNCFG |= (1<<15);
 }
 
 
